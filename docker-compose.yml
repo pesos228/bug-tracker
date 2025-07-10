@@ -62,6 +62,19 @@ services:
     depends_on:
       - postgres
 
+  backend:
+    container_name: backend
+    build: ./backend
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - postgres
+      - keycloak
+
 volumes:
   redis-data:
   caddy-data:

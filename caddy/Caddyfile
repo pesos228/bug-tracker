@@ -7,5 +7,5 @@ keycloak.local {
 }
 
 myapp.local {
-    reverse_proxy go-server:8081
+    reverse_proxy backend:8081
 }
