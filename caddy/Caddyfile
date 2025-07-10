@@ -1,0 +1,11 @@
+{
+    local_certs
+}
+
+keycloak.local {
+    reverse_proxy keycloak:8080
+}
+
+myapp.local {
+    reverse_proxy go-server:8081
+}
