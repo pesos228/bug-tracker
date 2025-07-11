@@ -10,10 +10,14 @@ import (
 	"github.com/pesos228/bug-tracker/internal/appmw"
 	"github.com/pesos228/bug-tracker/internal/auth"
 	"github.com/pesos228/bug-tracker/internal/config"
+	"github.com/pesos228/bug-tracker/internal/domain"
 	"github.com/pesos228/bug-tracker/internal/handler"
 	"github.com/pesos228/bug-tracker/internal/service"
+	"github.com/pesos228/bug-tracker/internal/store/psqlstore"
 	"github.com/pesos228/bug-tracker/internal/store/redisstore"
 	"github.com/redis/go-redis/v9"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -34,12 +38,20 @@ func main() {
 	}
 	defer redisClient.Close()
 
+	psqlDb, err := gorm.Open(postgres.Open(cfg.DatabaseUrl), &gorm.Config{})
+	if err != nil {
+		log.Fatalf("Connection to DB failed : %v", err)
+	}
+
+	migrateTables(psqlDb)
+
 	sessionTTL := time.Duration(cfg.Auth.SSOMaxLifespanSeconds) * time.Second
 
 	stateStore := redisstore.NewRedisStateStore(redisClient)
 	sessionStore := redisstore.NewRedisSessionStore(redisClient, sessionTTL)
+	userStore := psqlstore.NewPsqlUserStore(psqlDb)
 
-	authService := service.NewAuthService(authClient, sessionStore, stateStore)
+	authService := service.NewAuthService(authClient, sessionStore, stateStore, userStore)
 
 	authHandler := handler.NewAuthHandler(authService, sessionTTL)
 
@@ -70,4 +82,9 @@ func main() {
 	if err := http.ListenAndServe(cfg.AppPort, r); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
+}
+
+func migrateTables(db *gorm.DB) {
+	db.AutoMigrate(domain.User{})
+	db.AutoMigrate(domain.Task{})
 }

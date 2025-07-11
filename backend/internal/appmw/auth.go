@@ -9,16 +9,10 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/pesos228/bug-tracker/internal/auth"
+	"github.com/pesos228/bug-tracker/internal/handler/dto"
 	"github.com/pesos228/bug-tracker/internal/service"
 	"github.com/pesos228/bug-tracker/internal/store"
 )
-
-type idTokenClaims struct {
-	Email       string `json:"email"`
-	RealmAccess struct {
-		Roles []string `json:"roles"`
-	} `json:"realm_access"`
-}
 
 func AuthMiddleware(sessionStore store.SessionStore, authClient *auth.Client, authService service.AuthService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -55,7 +49,7 @@ func AuthMiddleware(sessionStore store.SessionStore, authClient *auth.Client, au
 				}
 			}
 
-			var claims idTokenClaims
+			var claims dto.IdTokenClaims
 			if err := verifiedToken.Claims(&claims); err != nil {
 				http.Error(w, "Failed to parse token claims", http.StatusInternalServerError)
 				return

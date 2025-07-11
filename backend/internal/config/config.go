@@ -24,6 +24,7 @@ type Config struct {
 	Auth        AuthConfig
 	RedisConfig redis.Options
 	AppPort     string
+	DatabaseUrl string
 }
 
 func LoadFromEnv() *Config {
@@ -58,7 +59,8 @@ func LoadFromEnv() *Config {
 			Password: requireEnv("REDIS_PASSWORD"),
 			DB:       RedisDb,
 		},
-		AppPort: requireEnv("APP_PORT"),
+		AppPort:     requireEnv("APP_PORT"),
+		DatabaseUrl: requireEnv("POSTGRES_URL"),
 	}
 }
 

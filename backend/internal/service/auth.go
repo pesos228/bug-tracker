@@ -6,6 +6,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pesos228/bug-tracker/internal/auth"
+	"github.com/pesos228/bug-tracker/internal/domain"
+	"github.com/pesos228/bug-tracker/internal/handler/dto"
 	"github.com/pesos228/bug-tracker/internal/store"
 	"golang.org/x/oauth2"
 )
@@ -20,6 +22,7 @@ type authServiceImpl struct {
 	authClient   *auth.Client
 	sessionStore store.SessionStore
 	stateStore   store.StateStore
+	userStore    store.UserStore
 }
 
 func (a *authServiceImpl) HandleCallback(ctx context.Context, code string, state string) (string, error) {
@@ -41,9 +44,23 @@ func (a *authServiceImpl) HandleCallback(ctx context.Context, code string, state
 		return "", fmt.Errorf("id_token not found in token response")
 	}
 
-	_, err = a.authClient.OIDC.Verify(ctx, rawIdToken)
+	verifiedToken, err := a.authClient.OIDC.Verify(ctx, rawIdToken)
 	if err != nil {
 		return "", fmt.Errorf("failed to verify id_token immediately after exchange: %w", err)
+	}
+
+	var claims dto.IdTokenClaims
+	if err := verifiedToken.Claims(&claims); err != nil {
+		return "", fmt.Errorf("failed to parse token claims: %w", err)
+	}
+
+	newUser, err := domain.NewUser(verifiedToken.Subject, claims.Email, claims.GivenName, claims.FamilyName)
+	if err != nil {
+		return "", fmt.Errorf("failed to create new user: %w", err)
+	}
+
+	if err := a.userStore.Save(ctx, newUser); err != nil {
+		return "", fmt.Errorf("failed to save new user: %w", err)
 	}
 
 	sessionId := generateSessionId()
@@ -78,7 +95,7 @@ func (a *authServiceImpl) RefreshToken(ctx context.Context, refreshToken string)
 
 	newToken, err := tokenSource.Token()
 	if err != nil {
-		return nil, fmt.Errorf("failed to refresh token: %w", err)
+		return nil, fmt.Errorf("failed to get refresh token: %w", err)
 	}
 
 	if newToken.RefreshToken == "" {
@@ -96,10 +113,11 @@ func generateSessionId() string {
 	return uuid.NewString()
 }
 
-func NewAuthService(authClient *auth.Client, sessionStore store.SessionStore, stateStore store.StateStore) AuthService {
+func NewAuthService(authClient *auth.Client, sessionStore store.SessionStore, stateStore store.StateStore, userStore store.UserStore) AuthService {
 	return &authServiceImpl{
 		authClient:   authClient,
 		sessionStore: sessionStore,
 		stateStore:   stateStore,
+		userStore:    userStore,
 	}
 }
