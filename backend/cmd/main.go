@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -50,10 +49,16 @@ func main() {
 	stateStore := redisstore.NewRedisStateStore(redisClient)
 	sessionStore := redisstore.NewRedisSessionStore(redisClient, sessionTTL)
 	userStore := psqlstore.NewPsqlUserStore(psqlDb)
+	folderStore := psqlstore.NewPsqlFolderStore(psqlDb)
+	taskStore := psqlstore.NewPsqlTaskStore(psqlDb)
 
 	authService := service.NewAuthService(authClient, sessionStore, stateStore, userStore)
+	folderService := service.NewFolderService(folderStore)
+	taskService := service.NewTaskService(taskStore, userStore, folderStore)
 
 	authHandler := handler.NewAuthHandler(authService, sessionTTL)
+	folderHandler := handler.NewFolderHandler(folderService)
+	taskHandler := handler.NewTaskHandler(taskService)
 
 	r := chi.NewRouter()
 
@@ -65,17 +70,12 @@ func main() {
 
 	r.Group(func(r chi.Router) {
 		r.Use(appmw.AuthMiddleware(sessionStore, authClient, authService))
+		r.Use(appmw.AdminOnly)
 
-		r.Get("/protected", func(w http.ResponseWriter, r *http.Request) {
-			userId := r.Context().Value(appmw.KeyUserId)
-			userEmail := r.Context().Value(appmw.KeyUserEmail)
-			userRoles := r.Context().Value(appmw.KeyUserRoles)
+		r.Post("/api/folders", folderHandler.Create)
+		r.Get("/api/folders", folderHandler.Search)
 
-			w.Write([]byte("Protected route accessed!\n"))
-			w.Write([]byte("User ID: " + userId.(string) + "\n"))
-			w.Write([]byte("User Email: " + userEmail.(string) + "\n"))
-			w.Write([]byte("User Roles: " + fmt.Sprintf("%v", userRoles) + "\n"))
-		})
+		r.Post("/api/folders/{id}/tasks", taskHandler.Create)
 	})
 
 	log.Println("Server started on", cfg.AppPort)
@@ -86,5 +86,7 @@ func main() {
 
 func migrateTables(db *gorm.DB) {
 	db.AutoMigrate(domain.User{})
+	db.AutoMigrate(domain.Task{})
+	db.AutoMigrate(domain.Folder{})
 	db.AutoMigrate(domain.Task{})
 }

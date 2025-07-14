@@ -57,7 +57,7 @@ func AuthMiddleware(sessionStore store.SessionStore, authClient *auth.Client, au
 
 			ctx := r.Context()
 			ctx = context.WithValue(ctx, KeyUserId, verifiedToken.Subject)
-			ctx = context.WithValue(ctx, KeyUserEmail, claims.Email)
+			ctx = context.WithValue(ctx, KeyGivenName, claims.GivenName)
 			ctx = context.WithValue(ctx, KeyUserRoles, claims.RealmAccess.Roles)
 
 			next.ServeHTTP(w, r.WithContext(ctx))

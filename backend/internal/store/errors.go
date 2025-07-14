@@ -7,4 +7,5 @@ var (
 	ErrStateNotFound   = errors.New("state not found")
 	ErrUserNotFound    = errors.New("user not found")
 	ErrTaskNotFound    = errors.New("task not found")
+	ErrFolderNotFound  = errors.New("folder not found")
 )

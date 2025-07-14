@@ -13,6 +13,16 @@ type userStoreImpl struct {
 	db *gorm.DB
 }
 
+func (u *userStoreImpl) IsExists(ctx context.Context, userId string) (bool, error) {
+	var count int64
+
+	if err := u.db.WithContext(ctx).Model(&domain.User{}).Where("id = ?", userId).Count(&count).Error; err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
 func (u *userStoreImpl) FindAll(ctx context.Context, page, pageSize int, preloads ...store.PreloadOption) ([]*domain.User, int64, error) {
 	var users []*domain.User
 	var count int64
@@ -22,6 +32,10 @@ func (u *userStoreImpl) FindAll(ctx context.Context, page, pageSize int, preload
 
 	if err := query.Count(&count).Error; err != nil {
 		return nil, 0, err
+	}
+
+	if count == 0 {
+		return []*domain.User{}, 0, nil
 	}
 
 	paginatedQuery := query.Scopes(store.PaginationWithParams(page, pageSize)).Find(&users)

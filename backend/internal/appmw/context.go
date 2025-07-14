@@ -8,6 +8,7 @@ const (
 	KeyUserId    = contextKey("userId")
 	KeyUserEmail = contextKey("userEmail")
 	KeyUserRoles = contextKey("userRoles")
+	KeyGivenName = contextKey("givenName")
 )
 
 func UserIdFromContext(ctx context.Context) (string, bool) {

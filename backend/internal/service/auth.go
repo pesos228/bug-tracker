@@ -56,7 +56,7 @@ func (a *authServiceImpl) HandleCallback(ctx context.Context, code string, state
 
 	newUser, err := domain.NewUser(verifiedToken.Subject, claims.Email, claims.GivenName, claims.FamilyName)
 	if err != nil {
-		return "", fmt.Errorf("failed to create new user: %w", err)
+		return "", err
 	}
 
 	if err := a.userStore.Save(ctx, newUser); err != nil {

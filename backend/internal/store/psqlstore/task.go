@@ -48,7 +48,7 @@ func (t *taskStoreImpl) FindByUserId(ctx context.Context, page, pageSize int, us
 }
 
 func (t *taskStoreImpl) Save(ctx context.Context, task *domain.Task) error {
-	panic("unimplemented")
+	return t.db.WithContext(ctx).Save(task).Error
 }
 
 func NewPsqlTaskStore(db *gorm.DB) store.TaskStore {

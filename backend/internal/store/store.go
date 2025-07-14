@@ -36,6 +36,7 @@ type SessionStore interface {
 type UserStore interface {
 	Save(ctx context.Context, user *domain.User) error
 	FindById(ctx context.Context, userId string, preloads ...PreloadOption) (*domain.User, error)
+	IsExists(ctx context.Context, userId string) (bool, error)
 	FindAll(ctx context.Context, page, pageSize int, preloads ...PreloadOption) ([]*domain.User, int64, error)
 }
 
@@ -43,4 +44,10 @@ type TaskStore interface {
 	Save(ctx context.Context, task *domain.Task) error
 	FindById(ctx context.Context, taskId string) (*domain.Task, error)
 	FindByUserId(ctx context.Context, page, pageSize int, userId string) ([]*domain.Task, int64, error)
+}
+
+type FolderStore interface {
+	Save(ctx context.Context, folder *domain.Folder) error
+	Search(ctx context.Context, page, pageSize int, query string) ([]*domain.Folder, int64, error)
+	IsExists(ctx context.Context, folderId string) (bool, error)
 }
