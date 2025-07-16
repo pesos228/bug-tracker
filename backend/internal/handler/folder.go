@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/pesos228/bug-tracker/internal/appmw"
@@ -47,21 +46,11 @@ func (f *FolderHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *FolderHandler) Search(w http.ResponseWriter, r *http.Request) {
-	pageStr := r.URL.Query().Get("page")
-	pageSizeStr := r.URL.Query().Get("page_size")
-
-	query := r.URL.Query().Get("query")
+	query := getQueryString(r.URL.Query(), "query", "")
 	query = strings.TrimSpace(query)
 
-	page, err := strconv.Atoi(pageStr)
-	if err != nil {
-		page = 1
-	}
-
-	pageSize, err := strconv.Atoi(pageSizeStr)
-	if err != nil {
-		pageSize = 10
-	}
+	page := getQueryInt(r.URL.Query(), "page", 1)
+	pageSize := getQueryInt(r.URL.Query(), "pageSize", 10)
 
 	result, err := f.folderService.Search(r.Context(), page, pageSize, query)
 	if err != nil {

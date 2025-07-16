@@ -28,7 +28,7 @@ func (f *folerServiceImpl) Save(ctx context.Context, name, userId string) (*dto.
 	}
 
 	return &dto.FolderCreatedResponse{
-		FolderDataResponse: mapToFolderDataResponse(newFolder),
+		FolderDataResponse: *mapToFolderDataResponse(newFolder),
 	}, nil
 }
 
@@ -38,7 +38,7 @@ func (f *folerServiceImpl) Search(ctx context.Context, page int, pageSize int, q
 		return nil, fmt.Errorf("%s: error while searching", err.Error())
 	}
 
-	data := make([]dto.FolderDataResponse, len(result))
+	data := make([]*dto.FolderDataResponse, len(result))
 	for i, folder := range result {
 		data[i] = mapToFolderDataResponse(folder)
 	}
@@ -53,8 +53,8 @@ func NewFolderService(folderStore store.FolderStore) FolderService {
 	return &folerServiceImpl{folderStore: folderStore}
 }
 
-func mapToFolderDataResponse(folder *domain.Folder) dto.FolderDataResponse {
-	return dto.FolderDataResponse{
+func mapToFolderDataResponse(folder *domain.Folder) *dto.FolderDataResponse {
+	return &dto.FolderDataResponse{
 		Name:      folder.Name,
 		Id:        folder.ID,
 		CreatedAt: folder.CreatedAt,

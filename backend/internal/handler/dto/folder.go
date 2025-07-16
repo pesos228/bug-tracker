@@ -17,6 +17,6 @@ type FolderCreatedResponse struct {
 }
 
 type FolderSearchResponse struct {
-	Data       []FolderDataResponse `json:"data"`
-	Pagination PaginationResult     `json:"pagination"`
+	Data       []*FolderDataResponse `json:"data"`
+	Pagination PaginationResult      `json:"pagination"`
 }

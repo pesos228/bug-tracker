@@ -11,7 +11,7 @@ type Folder struct {
 	BaseModel
 	Name      string    `gorm:"type:VARCHAR(255);not null"`
 	CreatedBy string    `gorm:"type:uuid;not null"`
-	CreatedAt time.Time `gorm:"type:date"`
+	CreatedAt time.Time `gorm:"type:timestamptz;not null"`
 	Tasks     []*Task
 }
 

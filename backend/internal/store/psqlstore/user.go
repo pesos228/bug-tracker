@@ -3,6 +3,8 @@ package psqlstore
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/pesos228/bug-tracker/internal/domain"
 	"github.com/pesos228/bug-tracker/internal/store"
@@ -11,6 +13,40 @@ import (
 
 type userStoreImpl struct {
 	db *gorm.DB
+}
+
+func (u *userStoreImpl) Search(ctx context.Context, params *store.SearchUsersQuery) ([]*domain.User, int64, error) {
+	var users []*domain.User
+	var count int64
+
+	dbQuery := u.db.WithContext(ctx).Model(&domain.User{})
+
+	if params.FullName != "" {
+		words := strings.Fields(params.FullName)
+
+		if len(words) > 0 {
+			fullNameExpr := gorm.Expr("CONCAT(first_name, ' ', last_name)")
+			for _, word := range words {
+				dbQuery = dbQuery.Where("? ILIKE ?", fullNameExpr, "%"+word+"%")
+			}
+		}
+	}
+
+	if err := dbQuery.Count(&count).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to count users: %w", err)
+	}
+
+	if count == 0 {
+		return []*domain.User{}, 0, nil
+	}
+
+	paginatedQuery := dbQuery.Scopes(store.PaginationWithParams(params.Page, params.PageSize)).Find(&users)
+
+	if paginatedQuery.Error != nil {
+		return nil, 0, fmt.Errorf("failed to find users: %w", paginatedQuery.Error)
+	}
+
+	return users, count, nil
 }
 
 func (u *userStoreImpl) IsExists(ctx context.Context, userId string) (bool, error) {

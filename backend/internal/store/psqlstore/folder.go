@@ -44,7 +44,7 @@ func (f *folderStoreImpl) Search(ctx context.Context, page int, pageSize int, qu
 		return []*domain.Folder{}, 0, nil
 	}
 
-	paginatedQuery := dbQuery.Scopes(store.PaginationWithParams(page, pageSize)).Find(&folders)
+	paginatedQuery := dbQuery.Order("created_at DESC").Scopes(store.PaginationWithParams(page, pageSize)).Find(&folders)
 	if paginatedQuery.Error != nil {
 		return nil, 0, paginatedQuery.Error
 	}

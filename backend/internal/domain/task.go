@@ -36,6 +36,7 @@ type Task struct {
 	CheckStatus       CheckStatus `gorm:"type:varchar(20);not null;default:'not_checked'"`
 	CheckResult       CheckResult `gorm:"type:varchar(20)"`
 	Comment           string      `gorm:"type:text"`
+	CreatedAt         time.Time   `gorm:"type:timestamptz;not null"`
 }
 
 type NewTaskParams struct {
@@ -86,5 +87,6 @@ func NewTask(params *NewTaskParams) (*Task, error) {
 		FolderID:          params.FolderID,
 		CheckStatus:       NotChecked,
 		TestEnvDateUpdate: params.TestEnvDateUpdate,
+		CreatedAt:         time.Now().UTC(),
 	}, nil
 }

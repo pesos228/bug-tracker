@@ -41,7 +41,7 @@ func (t *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := t.taskService.Save(r.Context(), &service.CreateFolderParams{
+	err := t.taskService.Save(r.Context(), &service.CreateTaskParams{
 		SoftName:          newTaskRequest.SoftName,
 		RequestID:         newTaskRequest.RequestId,
 		Description:       newTaskRequest.Description,
@@ -65,4 +65,52 @@ func (t *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
+}
+
+func (t *TaskHandler) ListByFolder(w http.ResponseWriter, r *http.Request) {
+	folderId := chi.URLParam(r, "id")
+	if folderId == "" {
+		http.Error(w, "Folder id is missing in URL", http.StatusBadRequest)
+		return
+	}
+	page := getQueryInt(r.URL.Query(), "page", 1)
+	pageSize := getQueryInt(r.URL.Query(), "pageSize", 10)
+	checkStatus := getQueryString(r.URL.Query(), "checkStatus", "")
+
+	tasks, err := t.taskService.SearchByFolder(r.Context(), &service.SearchTasksParams{
+		FolderID:    folderId,
+		Page:        page,
+		PageSize:    pageSize,
+		CheckStatus: checkStatus,
+	})
+
+	if err != nil {
+		if errors.Is(err, store.ErrFolderNotFound) {
+			http.Error(w, fmt.Sprintf("Folder with ID: %s not found", folderId), http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(tasks); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to Encode DTO: %s", err.Error()), http.StatusInternalServerError)
+	}
+}
+
+func (t *TaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	taskId := chi.URLParam(r, "id")
+	if taskId == "" {
+		http.Error(w, "Task id is missing in URL", http.StatusBadRequest)
+		return
+	}
+
+	if err := t.taskService.DeleteByID(r.Context(), taskId); err != nil {
+		if errors.Is(err, store.ErrTaskNotFound) {
+			http.Error(w, fmt.Sprintf("Task with ID: %s not found", taskId), http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

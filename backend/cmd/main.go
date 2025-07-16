@@ -55,10 +55,12 @@ func main() {
 	authService := service.NewAuthService(authClient, sessionStore, stateStore, userStore)
 	folderService := service.NewFolderService(folderStore)
 	taskService := service.NewTaskService(taskStore, userStore, folderStore)
+	userService := service.NewUserService(userStore, taskStore)
 
 	authHandler := handler.NewAuthHandler(authService, sessionTTL)
 	folderHandler := handler.NewFolderHandler(folderService)
 	taskHandler := handler.NewTaskHandler(taskService)
+	userHandler := handler.NewUserHandler(userService)
 
 	r := chi.NewRouter()
 
@@ -70,12 +72,31 @@ func main() {
 
 	r.Group(func(r chi.Router) {
 		r.Use(appmw.AuthMiddleware(sessionStore, authClient, authService))
+
+		//TODO
+		// GET /api/users/me - инфа о пользователе
+		// GET /api/tasks/my - таски пользователя
+		// GET /api/tasks/{id} - детали таски
+		// PUT /api/tasks{id} - обновить таску
+	})
+
+	r.Group(func(r chi.Router) {
+		r.Use(appmw.AuthMiddleware(sessionStore, authClient, authService))
 		r.Use(appmw.AdminOnly)
+
+		//TODO
+		r.Get("/api/users", userHandler.Search)
 
 		r.Post("/api/folders", folderHandler.Create)
 		r.Get("/api/folders", folderHandler.Search)
+		r.Get("/api/folders/{id}/tasks", taskHandler.ListByFolder)
+		// DELETE /api/folders/{id}
 
 		r.Post("/api/folders/{id}/tasks", taskHandler.Create)
+		// PUT /api/tasks/{id} обновить таску
+		r.Delete("/api/tasks/{id}", taskHandler.Delete)
+
+		// GET /api/folders/{id}/reports
 	})
 
 	log.Println("Server started on", cfg.AppPort)

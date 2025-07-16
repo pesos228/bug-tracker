@@ -3,6 +3,7 @@ package psqlstore
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/pesos228/bug-tracker/internal/domain"
 	"github.com/pesos228/bug-tracker/internal/store"
@@ -11,6 +12,62 @@ import (
 
 type taskStoreImpl struct {
 	db *gorm.DB
+}
+
+func (t *taskStoreImpl) GetTaskCountsForUsers(ctx context.Context, userIDs []string, inProgressStatuses, completedStatuses []domain.CheckStatus) ([]*store.TaskCountResult, error) {
+	var tasksCount []*store.TaskCountResult
+
+	inProgressExpr := gorm.Expr("COUNT(CASE WHEN check_status IN (?) THEN 1 END)", inProgressStatuses)
+	completedExpr := gorm.Expr("COUNT(CASE WHEN check_status IN (?) THEN 1 END)", completedStatuses)
+
+	err := t.db.WithContext(ctx).Model(&domain.Task{}).
+		Select("assignee_id as user_id, ? as in_progress_tasks_count, ? as completed_tasks_count", inProgressExpr, completedExpr).
+		Where("assignee_id IN (?)", userIDs).
+		Group("assignee_id").Find(&tasksCount).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task counts for users: %w", err)
+	}
+
+	return tasksCount, nil
+}
+
+func (t *taskStoreImpl) DeleteByID(ctx context.Context, taskID string) error {
+	result := t.db.WithContext(ctx).Delete(&domain.Task{}, "id = ?", taskID)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return store.ErrTaskNotFound
+	}
+
+	return nil
+}
+
+func (t *taskStoreImpl) Search(ctx context.Context, params *store.SearchTaskQuery) ([]*domain.Task, int64, error) {
+	var tasks []*domain.Task
+	var count int64
+
+	dbQuery := t.db.WithContext(ctx).Model(&domain.Task{}).Where("folder_id = ?", params.FolderID)
+
+	if params.CheckStatus != "" {
+		dbQuery = dbQuery.Where("check_status = ?", params.CheckStatus)
+	}
+
+	if err := dbQuery.Count(&count).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if count == 0 {
+		return []*domain.Task{}, 0, nil
+	}
+
+	paginatedQuery := dbQuery.Order("created_at DESC").Scopes(store.PaginationWithParams(params.Page, params.PageSize)).Find(&tasks)
+	if paginatedQuery.Error != nil {
+		return nil, 0, paginatedQuery.Error
+	}
+
+	return tasks, count, nil
 }
 
 func (t *taskStoreImpl) FindById(ctx context.Context, taskId string) (*domain.Task, error) {
