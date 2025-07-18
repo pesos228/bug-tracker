@@ -3,6 +3,8 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"strings"
+	"unicode"
 )
 
 type User struct {
@@ -34,7 +36,20 @@ func NewUser(userId, email, firstName, lastName string) (*User, error) {
 			ID: userId,
 		},
 		Email:     email,
-		FirstName: firstName,
-		LastName:  lastName,
+		FirstName: capitalizeFirst(firstName),
+		LastName:  capitalizeFirst(lastName),
 	}, nil
+}
+
+func capitalizeFirst(s string) string {
+	newString := strings.TrimSpace(s)
+
+	runes := []rune(newString)
+	runes[0] = unicode.ToUpper(runes[0])
+
+	for i := 1; i < len(runes); i++ {
+		runes[i] = unicode.ToLower(runes[i])
+	}
+
+	return string(runes)
 }

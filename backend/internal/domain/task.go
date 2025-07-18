@@ -49,33 +49,61 @@ type NewTaskParams struct {
 	TestEnvDateUpdate time.Time
 }
 
-func (n *NewTaskParams) validate() error {
+type UpdateTaskParams struct {
+	SoftName          *string
+	RequestID         *string
+	Description       *string
+	TestEnvDateUpdate *time.Time
+	AssigneeID        *string
+	FolderID          *string
+	CheckDate         *time.Time
+	CheckStatus       *string
+	CheckResult       *string
+	Comment           *string
+}
+
+func (t *Task) validate() error {
 	switch {
-	case n.SoftName == "":
+	case t.SoftName == "":
 		return fmt.Errorf("%w: softName is required", ErrValidation)
-	case n.RequestID == "":
+	case t.RequestID == "":
 		return fmt.Errorf("%w: requestId is required", ErrValidation)
-	case n.Description == "":
+	case t.Description == "":
 		return fmt.Errorf("%w: description is required", ErrValidation)
-	case n.AssigneeID == "":
+	case t.AssigneeID == "":
 		return fmt.Errorf("%w: assigneeId is required", ErrValidation)
-	case n.CreatorID == "":
+	case t.CreatorID == "":
 		return fmt.Errorf("%w: creatorId is required", ErrValidation)
-	case n.FolderID == "":
+	case t.FolderID == "":
 		return fmt.Errorf("%w: folderId is required", ErrValidation)
-	case n.TestEnvDateUpdate.IsZero():
+	case t.TestEnvDateUpdate.IsZero():
 		return fmt.Errorf("%w: testEnvDateUpdate is required", ErrValidation)
-	default:
-		return nil
 	}
+
+	if err := t.CheckStatus.isValid(); err != nil {
+		return err
+	}
+	if err := t.CheckResult.isValid(); err != nil {
+		return err
+	}
+
+	if t.CheckStatus == NotChecked && t.CheckResult != "" {
+		return fmt.Errorf("%w: checkResult must be empty when status is 'not_checked'", ErrValidation)
+	}
+
+	if t.CheckStatus != NotChecked && (t.CheckDate == nil || t.CheckDate.IsZero()) {
+		return fmt.Errorf("%w: checkDate must be set when status is not 'not_checked'", ErrValidation)
+	}
+
+	if t.CheckStatus == Failed && t.CheckResult == Success {
+		return fmt.Errorf("%w: checkResult cannot be 'success' when status is 'failed_check'", ErrValidation)
+	}
+
+	return nil
 }
 
 func NewTask(params *NewTaskParams) (*Task, error) {
-	if err := params.validate(); err != nil {
-		return nil, err
-	}
-
-	return &Task{
+	task := &Task{
 		BaseModel: BaseModel{
 			uuid.NewString(),
 		},
@@ -88,5 +116,67 @@ func NewTask(params *NewTaskParams) (*Task, error) {
 		CheckStatus:       NotChecked,
 		TestEnvDateUpdate: params.TestEnvDateUpdate,
 		CreatedAt:         time.Now().UTC(),
-	}, nil
+	}
+
+	if err := task.validate(); err != nil {
+		return nil, err
+	}
+
+	return task, nil
+}
+
+func (t *Task) Update(params *UpdateTaskParams) error {
+	if params.SoftName != nil {
+		t.SoftName = *params.SoftName
+	}
+	if params.RequestID != nil {
+		t.RequestID = *params.RequestID
+	}
+	if params.Description != nil {
+		t.Description = *params.Description
+	}
+	if params.TestEnvDateUpdate != nil {
+		t.TestEnvDateUpdate = *params.TestEnvDateUpdate
+	}
+	if params.AssigneeID != nil {
+		t.AssigneeID = *params.AssigneeID
+	}
+	if params.FolderID != nil {
+		t.FolderID = *params.FolderID
+	}
+	if params.CheckDate != nil {
+		t.CheckDate = params.CheckDate
+	}
+	if params.CheckStatus != nil {
+		t.CheckStatus = CheckStatus(*params.CheckStatus)
+	}
+	if params.CheckResult != nil {
+		t.CheckResult = CheckResult(*params.CheckResult)
+	}
+	if params.Comment != nil {
+		t.Comment = *params.Comment
+	}
+
+	return t.validate()
+}
+
+func (cs CheckStatus) isValid() error {
+	switch cs {
+	case NotChecked, Checked, PartiallyChecked, Failed:
+		return nil
+	default:
+		return fmt.Errorf("%w: unknown check status '%s'", ErrValidation, cs)
+	}
+}
+
+func (cr CheckResult) isValid() error {
+	if cr == "" {
+		return nil
+	}
+	switch cr {
+	case Success, Failure, Warning:
+		return nil
+	default:
+		return fmt.Errorf("%w: unknown check result '%s'", ErrValidation, cr)
+	}
 }

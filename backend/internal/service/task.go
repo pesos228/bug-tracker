@@ -28,16 +28,164 @@ type SearchTasksParams struct {
 	CheckStatus string
 }
 
+type UpdateTaskParams struct {
+	SoftName          *string
+	RequestID         *string
+	Description       *string
+	TestEnvDateUpdate *time.Time
+	AssigneeID        *string
+	FolderID          *string
+	CheckDate         *time.Time
+	CheckStatus       *string
+	CheckResult       *string
+	Comment           *string
+	TaskID            string
+	CurrentUserID     string
+}
+
+type TaskDetails struct {
+	ID                string
+	SoftName          string
+	RequestID         string
+	Description       string
+	AssigneeID        string
+	FolderID          string
+	TestEnvDateUpdate time.Time
+	CheckDate         *time.Time
+	CheckStatus       *string
+	CheckResult       *string
+	Comment           *string
+	CreatedAt         time.Time
+}
+
 type TaskService interface {
 	Save(ctx context.Context, params *CreateTaskParams) error
 	SearchByFolder(ctx context.Context, params *SearchTasksParams) (*dto.TaskPreviewResponse, error)
 	DeleteByID(ctx context.Context, taskID string) error
+	UpdateByAdmin(ctx context.Context, params *UpdateTaskParams) error
+	UpdateByUser(ctx context.Context, params *UpdateTaskParams) error
+	GetDetails(ctx context.Context, taskID, userID string) (*TaskDetails, error)
 }
+
+var ErrNotAssignee = errors.New("user is not the assignee")
 
 type taskServiceImpl struct {
 	taskStore   store.TaskStore
 	userStore   store.UserStore
 	folderStore store.FolderStore
+}
+
+func (t *taskServiceImpl) GetDetails(ctx context.Context, taskID string, userID string) (*TaskDetails, error) {
+	task, err := t.taskStore.FindById(ctx, taskID)
+	if err != nil {
+		if errors.Is(err, store.ErrTaskNotFound) {
+			return nil, fmt.Errorf("%w: not found with ID: %s", err, taskID)
+		}
+		return nil, fmt.Errorf("db error: %w", err)
+	}
+
+	if task.AssigneeID != userID {
+		return nil, fmt.Errorf("%w, task witd ID: %s", ErrNotAssignee, taskID)
+	}
+
+	return &TaskDetails{
+		ID:          task.ID,
+		SoftName:    task.SoftName,
+		RequestID:   task.RequestID,
+		Description: task.Description,
+		AssigneeID:  task.AssigneeID,
+		FolderID:    task.FolderID,
+		CheckDate:   task.CheckDate,
+		CheckStatus: (*string)(&task.CheckStatus),
+		CheckResult: (*string)(&task.CheckResult),
+		Comment:     &task.Comment,
+		CreatedAt:   task.CreatedAt,
+	}, nil
+}
+
+func (t *taskServiceImpl) UpdateByUser(ctx context.Context, params *UpdateTaskParams) error {
+	task, err := t.taskStore.FindById(ctx, params.TaskID)
+	if err != nil {
+		if errors.Is(err, store.ErrTaskNotFound) {
+			return fmt.Errorf("%w: with ID %s", err, params.TaskID)
+		}
+		return fmt.Errorf("db error: %w", err)
+	}
+
+	if task.AssigneeID != params.CurrentUserID {
+		return fmt.Errorf("%w: task with ID: %s", ErrNotAssignee, params.TaskID)
+	}
+
+	now := time.Now().UTC()
+	domainParams := &domain.UpdateTaskParams{
+		CheckStatus: params.CheckStatus,
+		CheckResult: params.CheckResult,
+		Comment:     params.Comment,
+		CheckDate:   &now,
+	}
+
+	if err := task.Update(domainParams); err != nil {
+		return err
+	}
+
+	if err := t.taskStore.Save(ctx, task); err != nil {
+		return fmt.Errorf("error while updating task: %w", err)
+	}
+
+	return nil
+}
+
+func (t *taskServiceImpl) UpdateByAdmin(ctx context.Context, params *UpdateTaskParams) error {
+	task, err := t.taskStore.FindById(ctx, params.TaskID)
+	if err != nil {
+		if errors.Is(err, store.ErrTaskNotFound) {
+			return fmt.Errorf("%w: with ID %s", err, params.TaskID)
+		}
+		return fmt.Errorf("db error: %w", err)
+	}
+
+	if params.AssigneeID != nil {
+		ok, err := t.userStore.IsExists(ctx, *params.AssigneeID)
+		if err != nil {
+			return fmt.Errorf("failed to check user existence: %w", err)
+		}
+		if !ok {
+			return fmt.Errorf("%w: with ID: %s", store.ErrUserNotFound, *params.AssigneeID)
+		}
+	}
+
+	if params.FolderID != nil {
+		ok, err := t.folderStore.IsExists(ctx, *params.FolderID)
+		if err != nil {
+			return fmt.Errorf("failed to check folder existence: %w", err)
+		}
+		if !ok {
+			return fmt.Errorf("%w: with ID: %s", store.ErrFolderNotFound, *params.FolderID)
+		}
+	}
+
+	domainParams := &domain.UpdateTaskParams{
+		SoftName:          params.SoftName,
+		RequestID:         params.RequestID,
+		Description:       params.Description,
+		TestEnvDateUpdate: params.TestEnvDateUpdate,
+		AssigneeID:        params.AssigneeID,
+		FolderID:          params.FolderID,
+		CheckDate:         params.CheckDate,
+		CheckStatus:       params.CheckStatus,
+		CheckResult:       params.CheckResult,
+		Comment:           params.Comment,
+	}
+
+	if err := task.Update(domainParams); err != nil {
+		return err
+	}
+
+	if err := t.taskStore.Save(ctx, task); err != nil {
+		return fmt.Errorf("error while updating task: %w", err)
+	}
+
+	return nil
 }
 
 func (t *taskServiceImpl) DeleteByID(ctx context.Context, taskID string) error {

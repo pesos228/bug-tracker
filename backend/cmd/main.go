@@ -76,8 +76,8 @@ func main() {
 		//TODO
 		// GET /api/users/me - инфа о пользователе
 		// GET /api/tasks/my - таски пользователя
-		// GET /api/tasks/{id} - детали таски
-		// PUT /api/tasks{id} - обновить таску
+		r.Get("/api/tasks/{id}", taskHandler.Details)
+		r.Patch("/api/tasks/{id}/review", taskHandler.UpdateByUser)
 	})
 
 	r.Group(func(r chi.Router) {
@@ -93,7 +93,7 @@ func main() {
 		// DELETE /api/folders/{id}
 
 		r.Post("/api/folders/{id}/tasks", taskHandler.Create)
-		// PUT /api/tasks/{id} обновить таску
+		r.Patch("/api/tasks/{id}", taskHandler.UpdateByAdmin)
 		r.Delete("/api/tasks/{id}", taskHandler.Delete)
 
 		// GET /api/folders/{id}/reports

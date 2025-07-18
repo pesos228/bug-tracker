@@ -27,9 +27,16 @@ func (f *folerServiceImpl) Save(ctx context.Context, name, userId string) (*dto.
 		return nil, fmt.Errorf("%s: failed to save folder", err.Error())
 	}
 
-	return &dto.FolderCreatedResponse{
-		FolderDataResponse: *mapToFolderDataResponse(newFolder),
-	}, nil
+	response := &dto.FolderCreatedResponse{
+		FolderDataResponse: dto.FolderDataResponse{
+			Name:      newFolder.Name,
+			CreatedAt: newFolder.CreatedAt,
+			Id:        newFolder.ID,
+			TaskCount: 0,
+		},
+	}
+
+	return response, nil
 }
 
 func (f *folerServiceImpl) Search(ctx context.Context, page int, pageSize int, query string) (*dto.FolderSearchResponse, error) {
@@ -40,7 +47,12 @@ func (f *folerServiceImpl) Search(ctx context.Context, page int, pageSize int, q
 
 	data := make([]*dto.FolderDataResponse, len(result))
 	for i, folder := range result {
-		data[i] = mapToFolderDataResponse(folder)
+		data[i] = &dto.FolderDataResponse{
+			Name:      folder.Name,
+			CreatedAt: folder.CreatedAt,
+			Id:        folder.ID,
+			TaskCount: int(folder.TaskCount),
+		}
 	}
 
 	return &dto.FolderSearchResponse{
@@ -51,12 +63,4 @@ func (f *folerServiceImpl) Search(ctx context.Context, page int, pageSize int, q
 
 func NewFolderService(folderStore store.FolderStore) FolderService {
 	return &folerServiceImpl{folderStore: folderStore}
-}
-
-func mapToFolderDataResponse(folder *domain.Folder) *dto.FolderDataResponse {
-	return &dto.FolderDataResponse{
-		Name:      folder.Name,
-		Id:        folder.ID,
-		CreatedAt: folder.CreatedAt,
-	}
 }

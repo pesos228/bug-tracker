@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pesos228/bug-tracker/internal/appmw"
@@ -113,4 +114,179 @@ func (t *TaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func (t *TaskHandler) UpdateByAdmin(w http.ResponseWriter, r *http.Request) {
+	taskID := chi.URLParam(r, "id")
+	if taskID == "" {
+		http.Error(w, "Task id is missing in URL", http.StatusBadRequest)
+		return
+	}
+
+	var taskUpdate dto.TaskUpdateByAdminRequest
+	if err := json.NewDecoder(r.Body).Decode(&taskUpdate); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to decode JSON: %s", err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	if err := t.taskService.UpdateByAdmin(r.Context(), &service.UpdateTaskParams{
+		SoftName:          taskUpdate.SoftName,
+		RequestID:         taskUpdate.RequestID,
+		Description:       taskUpdate.Description,
+		TestEnvDateUpdate: taskUpdate.TestEnvDateUpdate,
+		AssigneeID:        taskUpdate.AssigneeID,
+		FolderID:          taskUpdate.FolderID,
+		CheckDate:         taskUpdate.CheckDate,
+		CheckStatus:       taskUpdate.CheckStatus,
+		CheckResult:       taskUpdate.CheckResult,
+		Comment:           taskUpdate.Comment,
+		TaskID:            taskID,
+	}); err != nil {
+		if errors.Is(err, domain.ErrValidation) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, store.ErrFolderNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, store.ErrUserNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, store.ErrTaskNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (t *TaskHandler) UpdateByUser(w http.ResponseWriter, r *http.Request) {
+	taskID := chi.URLParam(r, "id")
+	if taskID == "" {
+		http.Error(w, "Task id is missing in URL", http.StatusBadRequest)
+		return
+	}
+
+	var taskUpdate dto.TaskUpdateByUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&taskUpdate); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to decode JSON: %s", err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	userID, ok := appmw.UserIdFromContext(r.Context())
+	if !ok || userID == "" {
+		http.Error(w, "UserID not found in context", http.StatusInternalServerError)
+		return
+	}
+
+	if err := t.taskService.UpdateByUser(r.Context(), &service.UpdateTaskParams{
+		CheckStatus:   taskUpdate.CheckStatus,
+		CheckResult:   taskUpdate.CheckResult,
+		Comment:       taskUpdate.Comment,
+		TaskID:        taskID,
+		CurrentUserID: userID,
+	}); err != nil {
+		if errors.Is(err, domain.ErrValidation) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, service.ErrNotAssignee) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (t *TaskHandler) Details(w http.ResponseWriter, r *http.Request) {
+	taskID := chi.URLParam(r, "id")
+	if taskID == "" {
+		http.Error(w, "Task id is missing in URL", http.StatusBadRequest)
+		return
+	}
+
+	view := getQueryString(r.URL.Query(), "view", "")
+
+	roles, ok := appmw.UserRolesFromContext(r.Context())
+	if !ok || len(roles) == 0 {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+	userID, ok := appmw.UserIdFromContext(r.Context())
+	if !ok || userID == "" {
+		http.Error(w, "UserID not found in context", http.StatusInternalServerError)
+		return
+	}
+
+	task, err := t.taskService.GetDetails(r.Context(), taskID, userID)
+	if err != nil {
+		if errors.Is(err, store.ErrTaskNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, service.ErrNotAssignee) {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	isAdmin := isAdmin(roles)
+
+	w.Header().Set("Content-Type", "application/json")
+	switch {
+	case strings.EqualFold(view, "full"):
+		if !isAdmin {
+			http.Error(w, "Forbidden: 'fill' view is not allowed for this user", http.StatusForbidden)
+			return
+		}
+
+		response := dto.TaskDetailsForAdminResponse{
+			ID:          task.ID,
+			SoftName:    task.SoftName,
+			RequestID:   task.RequestID,
+			Description: task.Description,
+			AssigneeID:  task.AssigneeID,
+			FolderID:    task.FolderID,
+			CheckDate:   task.CheckDate,
+			CheckStatus: task.CheckStatus,
+			CheckResult: task.CheckResult,
+			Comment:     task.Comment,
+			CreatedAt:   task.CreatedAt,
+		}
+
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			http.Error(w, fmt.Sprintf("Failed to Encode DTO: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+	case strings.EqualFold(view, "short"):
+		response := dto.TaskDetailsForUserResponse{
+			SoftName:    task.SoftName,
+			RequestID:   task.RequestID,
+			Description: task.Description,
+			CheckDate:   task.CheckDate,
+			CheckStatus: task.CheckStatus,
+			CheckResult: task.CheckResult,
+			Comment:     task.Comment,
+		}
+
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			http.Error(w, fmt.Sprintf("Failed to Encode DTO: %s", err.Error()), http.StatusInternalServerError)
+			return
+		}
+	default:
+		http.Error(w, "unknown view", http.StatusNotFound)
+	}
+}
+
+func isAdmin(s []string) bool {
+	for _, role := range s {
+		if strings.EqualFold(role, "admin") {
+			return true
+		}
+	}
+	return false
 }

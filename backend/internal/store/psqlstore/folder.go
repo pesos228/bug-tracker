@@ -3,7 +3,6 @@ package psqlstore
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/pesos228/bug-tracker/internal/domain"
 	"github.com/pesos228/bug-tracker/internal/store"
@@ -24,32 +23,43 @@ func (f *folderStoreImpl) IsExists(ctx context.Context, folderId string) (bool, 
 	return count > 0, nil
 }
 
-func (f *folderStoreImpl) Search(ctx context.Context, page int, pageSize int, query string) ([]*domain.Folder, int64, error) {
-	var folders []*domain.Folder
+func (f *folderStoreImpl) Search(ctx context.Context, page int, pageSize int, query string) ([]*store.FolderSearchResult, int64, error) {
+	var results []*store.FolderSearchResult
 	var count int64
 
-	dbQuery := f.db.WithContext(ctx).Model(&domain.Folder{})
-
+	countQuery := f.db.WithContext(ctx).Model(&domain.Folder{})
 	if query != "" {
-		searchQuery := strings.ToLower(query)
-		searchPattern := fmt.Sprintf("%%%s%%", searchQuery)
-		dbQuery = dbQuery.Where("LOWER(name) LIKE ?", searchPattern)
+		searchPattern := fmt.Sprintf("%%%s%%", query)
+		countQuery = countQuery.Where("name ILIKE ?", searchPattern)
 	}
 
-	if err := dbQuery.Count(&count).Error; err != nil {
+	if err := countQuery.Count(&count).Error; err != nil {
 		return nil, 0, err
 	}
 
 	if count == 0 {
-		return []*domain.Folder{}, 0, nil
+		return []*store.FolderSearchResult{}, 0, nil
 	}
 
-	paginatedQuery := dbQuery.Order("created_at DESC").Scopes(store.PaginationWithParams(page, pageSize)).Find(&folders)
-	if paginatedQuery.Error != nil {
-		return nil, 0, paginatedQuery.Error
+	dataQuery := f.db.WithContext(ctx).Model(&domain.Folder{})
+	if query != "" {
+		searchPattern := fmt.Sprintf("%%%s%%", query)
+		dataQuery = dataQuery.Where("name ILIKE ?", searchPattern)
 	}
 
-	return folders, count, nil
+	err := dataQuery.
+		Select("folders.id, folders.name, folders.created_by, folders.created_at, COUNT(tasks.id) as task_count").
+		Joins("LEFT JOIN tasks ON tasks.folder_id = folders.id").
+		Group("folders.id").
+		Order("created_at DESC").
+		Scopes(store.PaginationWithParams(page, pageSize)).
+		Find(&results).Error
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return results, count, nil
 }
 
 func (f *folderStoreImpl) Save(ctx context.Context, folder *domain.Folder) error {

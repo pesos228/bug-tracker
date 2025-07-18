@@ -33,6 +33,11 @@ type TaskCountResult struct {
 	CompletedTasksCount  int
 }
 
+type FolderSearchResult struct {
+	domain.Folder
+	TaskCount int64
+}
+
 type PreloadOption string
 
 const (
@@ -71,6 +76,6 @@ type TaskStore interface {
 
 type FolderStore interface {
 	Save(ctx context.Context, folder *domain.Folder) error
-	Search(ctx context.Context, page, pageSize int, query string) ([]*domain.Folder, int64, error)
+	Search(ctx context.Context, page, pageSize int, query string) ([]*FolderSearchResult, int64, error)
 	IsExists(ctx context.Context, folderId string) (bool, error)
 }

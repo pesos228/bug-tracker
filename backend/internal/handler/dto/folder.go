@@ -10,6 +10,7 @@ type FolderDataResponse struct {
 	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"createdAt"`
 	Id        string    `json:"id"`
+	TaskCount int       `json:"taskCount"`
 }
 
 type FolderCreatedResponse struct {
