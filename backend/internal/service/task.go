@@ -21,8 +21,16 @@ type CreateTaskParams struct {
 	CreatorID         string
 }
 
-type SearchTasksParams struct {
+type SearchTasksByFolderIDParams struct {
 	FolderID    string
+	Page        int
+	PageSize    int
+	CheckStatus string
+	RequestID   string
+}
+
+type SearchTasksByUserIDParams struct {
+	AssigneeID  string
 	Page        int
 	PageSize    int
 	CheckStatus string
@@ -60,7 +68,8 @@ type TaskDetails struct {
 
 type TaskService interface {
 	Save(ctx context.Context, params *CreateTaskParams) error
-	SearchByFolder(ctx context.Context, params *SearchTasksParams) (*dto.TaskPreviewResponse, error)
+	SearchByFolderID(ctx context.Context, params *SearchTasksByFolderIDParams) (*dto.TaskPreviewResponse, error)
+	SearchByUserID(ctx context.Context, params *SearchTasksByUserIDParams) (*dto.TaskPreviewResponse, error)
 	DeleteByID(ctx context.Context, taskID string) error
 	UpdateByAdmin(ctx context.Context, params *UpdateTaskParams) error
 	UpdateByUser(ctx context.Context, params *UpdateTaskParams) error
@@ -73,6 +82,32 @@ type taskServiceImpl struct {
 	taskStore   store.TaskStore
 	userStore   store.UserStore
 	folderStore store.FolderStore
+}
+
+func (t *taskServiceImpl) SearchByUserID(ctx context.Context, params *SearchTasksByUserIDParams) (*dto.TaskPreviewResponse, error) {
+	if err := t.isUserExists(ctx, params.AssigneeID); err != nil {
+		return nil, err
+	}
+
+	tasks, count, err := t.taskStore.SearchByUserID(ctx, &store.SearchTaskQueryByUserID{
+		AssigneeID:  params.AssigneeID,
+		Page:        params.Page,
+		PageSize:    params.PageSize,
+		CheckStatus: params.CheckStatus,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("error while searching: %w", err)
+	}
+
+	data := mapTaskToTaskPreview(tasks)
+
+	pagination := store.CalculatePaginationResult(params.Page, params.PageSize, count)
+
+	return &dto.TaskPreviewResponse{
+		Data:       data,
+		Pagination: pagination,
+	}, nil
 }
 
 func (t *taskServiceImpl) GetDetails(ctx context.Context, taskID string, userID string) (*TaskDetails, error) {
@@ -145,22 +180,14 @@ func (t *taskServiceImpl) UpdateByAdmin(ctx context.Context, params *UpdateTaskP
 	}
 
 	if params.AssigneeID != nil {
-		ok, err := t.userStore.IsExists(ctx, *params.AssigneeID)
-		if err != nil {
-			return fmt.Errorf("failed to check user existence: %w", err)
-		}
-		if !ok {
-			return fmt.Errorf("%w: with ID: %s", store.ErrUserNotFound, *params.AssigneeID)
+		if err := t.isUserExists(ctx, *params.AssigneeID); err != nil {
+			return err
 		}
 	}
 
 	if params.FolderID != nil {
-		ok, err := t.folderStore.IsExists(ctx, *params.FolderID)
-		if err != nil {
-			return fmt.Errorf("failed to check folder existence: %w", err)
-		}
-		if !ok {
-			return fmt.Errorf("%w: with ID: %s", store.ErrFolderNotFound, *params.FolderID)
+		if err := t.isFolderExists(ctx, *params.FolderID); err != nil {
+			return err
 		}
 	}
 
@@ -198,17 +225,14 @@ func (t *taskServiceImpl) DeleteByID(ctx context.Context, taskID string) error {
 	return nil
 }
 
-func (t *taskServiceImpl) SearchByFolder(ctx context.Context, params *SearchTasksParams) (*dto.TaskPreviewResponse, error) {
-	ok, err := t.folderStore.IsExists(ctx, params.FolderID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check folder existence: %w", err)
-	}
-	if !ok {
-		return nil, fmt.Errorf("%w: with id %s", store.ErrFolderNotFound, params.FolderID)
+func (t *taskServiceImpl) SearchByFolderID(ctx context.Context, params *SearchTasksByFolderIDParams) (*dto.TaskPreviewResponse, error) {
+	if err := t.isFolderExists(ctx, params.FolderID); err != nil {
+		return nil, err
 	}
 
-	tasks, count, err := t.taskStore.Search(ctx, &store.SearchTaskQuery{
+	tasks, count, err := t.taskStore.SearchByFolderID(ctx, &store.SearchTaskQueryByFolderID{
 		FolderID:    params.FolderID,
+		RequestID:   params.RequestID,
 		Page:        params.Page,
 		PageSize:    params.PageSize,
 		CheckStatus: params.CheckStatus,
@@ -218,17 +242,7 @@ func (t *taskServiceImpl) SearchByFolder(ctx context.Context, params *SearchTask
 		return nil, fmt.Errorf("error while searching: %w", err)
 	}
 
-	data := make([]*dto.TaskPreview, len(tasks))
-	for i, task := range tasks {
-		data[i] = &dto.TaskPreview{
-			ID:          task.ID,
-			CheckStatus: string(task.CheckStatus),
-			SoftName:    task.SoftName,
-			RequestID:   task.RequestID,
-			Description: task.Description,
-			CreatedAt:   task.CreatedAt,
-		}
-	}
+	data := mapTaskToTaskPreview(tasks)
 
 	pagination := store.CalculatePaginationResult(params.Page, params.PageSize, count)
 
@@ -239,20 +253,11 @@ func (t *taskServiceImpl) SearchByFolder(ctx context.Context, params *SearchTask
 }
 
 func (t *taskServiceImpl) Save(ctx context.Context, params *CreateTaskParams) error {
-	ok, err := t.userStore.IsExists(ctx, params.AssigneeID)
-	if err != nil {
-		return fmt.Errorf("failed to check user existence: %w", err)
+	if err := t.isUserExists(ctx, params.AssigneeID); err != nil {
+		return err
 	}
-	if !ok {
-		return fmt.Errorf("%w: with id %s", store.ErrUserNotFound, params.AssigneeID)
-	}
-
-	ok, err = t.folderStore.IsExists(ctx, params.FolderID)
-	if err != nil {
-		return fmt.Errorf("failed to check folder existence: %w", err)
-	}
-	if !ok {
-		return fmt.Errorf("%w: with id %s", store.ErrFolderNotFound, params.FolderID)
+	if err := t.isFolderExists(ctx, params.FolderID); err != nil {
+		return err
 	}
 
 	newTask, err := domain.NewTask(&domain.NewTaskParams{
@@ -274,6 +279,43 @@ func (t *taskServiceImpl) Save(ctx context.Context, params *CreateTaskParams) er
 	}
 
 	return nil
+}
+
+func (t *taskServiceImpl) isUserExists(ctx context.Context, userID string) error {
+	ok, err := t.userStore.IsExists(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to check user existence: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("%w: with id %s", store.ErrUserNotFound, userID)
+	}
+	return nil
+}
+
+func (t *taskServiceImpl) isFolderExists(ctx context.Context, folderID string) error {
+	ok, err := t.folderStore.IsExists(ctx, folderID)
+	if err != nil {
+		return fmt.Errorf("failed to check folder existence: %w", err)
+	}
+	if !ok {
+		return fmt.Errorf("%w: with id %s", store.ErrFolderNotFound, folderID)
+	}
+	return nil
+}
+
+func mapTaskToTaskPreview(tasks []*domain.Task) []*dto.TaskPreview {
+	data := make([]*dto.TaskPreview, len(tasks))
+	for i, task := range tasks {
+		data[i] = &dto.TaskPreview{
+			ID:          task.ID,
+			CheckStatus: string(task.CheckStatus),
+			SoftName:    task.SoftName,
+			RequestID:   task.RequestID,
+			Description: task.Description,
+			CreatedAt:   task.CreatedAt,
+		}
+	}
+	return data
 }
 
 func NewTaskService(taskStore store.TaskStore, userStore store.UserStore, folderStore store.FolderStore) TaskService {

@@ -1,10 +1,10 @@
 package handler
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 
+	"github.com/pesos228/bug-tracker/internal/appmw"
+	"github.com/pesos228/bug-tracker/internal/handler/dto"
 	"github.com/pesos228/bug-tracker/internal/service"
 )
 
@@ -28,10 +28,34 @@ func (u *UserHandler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(users); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to Encode DTO: %s", err.Error()), http.StatusInternalServerError)
+	encodeJSON(w, users)
+}
+
+func (u *UserHandler) AboutUser(w http.ResponseWriter, r *http.Request) {
+	userID, ok := appmw.UserIdFromContext(r.Context())
+	if !ok || userID == "" {
+		http.Error(w, "UserID not found in context", http.StatusInternalServerError)
+		return
 	}
+
+	firstName, ok := appmw.UserFirstNameFromContext(r.Context())
+	if !ok {
+		http.Error(w, "FirstName not found in context", http.StatusInternalServerError)
+		return
+	}
+
+	lastName, ok := appmw.UserLastNameFromContext(r.Context())
+	if !ok {
+		http.Error(w, "LastName not found in context", http.StatusInternalServerError)
+		return
+	}
+
+	response := dto.UserInfoResponse{
+		FirstName: firstName,
+		LastName:  lastName,
+	}
+
+	encodeJSON(w, response)
 }
 
 func NewUserHandler(userService service.UserService) *UserHandler {

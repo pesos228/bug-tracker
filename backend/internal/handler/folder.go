@@ -2,13 +2,16 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/pesos228/bug-tracker/internal/appmw"
 	"github.com/pesos228/bug-tracker/internal/handler/dto"
 	"github.com/pesos228/bug-tracker/internal/service"
+	"github.com/pesos228/bug-tracker/internal/store"
 )
 
 type FolderHandler struct {
@@ -38,11 +41,8 @@ func (f *FolderHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(folder); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to Encode DTO: %s", err.Error()), http.StatusInternalServerError)
-	}
+	encodeJSON(w, folder)
 }
 
 func (f *FolderHandler) Search(w http.ResponseWriter, r *http.Request) {
@@ -58,8 +58,22 @@ func (f *FolderHandler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(result); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to Encode DTO: %s", err.Error()), http.StatusInternalServerError)
+	encodeJSON(w, result)
+}
+
+func (f *FolderHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	folderID := chi.URLParam(r, "id")
+	if folderID == "" {
+		http.Error(w, "Folder id is missing in URL", http.StatusBadRequest)
+		return
+	}
+
+	if err := f.folderService.Delete(r.Context(), folderID); err != nil {
+		if errors.Is(err, store.ErrFolderNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }

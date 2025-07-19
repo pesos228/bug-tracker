@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -24,15 +23,14 @@ func NewTaskHandler(taskService service.TaskService) *TaskHandler {
 }
 
 func (t *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
+	folderID := chi.URLParam(r, "id")
 	var newTaskRequest dto.CreateTaskRequest
-	if id == "" {
+	if folderID == "" {
 		http.Error(w, "Folder id is missing in URL", http.StatusBadRequest)
 		return
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&newTaskRequest); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to decode JSON: %s", err.Error()), http.StatusBadRequest)
+	if ok := decodeJSON(w, r, &newTaskRequest); !ok {
 		return
 	}
 
@@ -47,7 +45,7 @@ func (t *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		RequestID:         newTaskRequest.RequestId,
 		Description:       newTaskRequest.Description,
 		TestEnvDateUpdate: newTaskRequest.TestEnvDateUpdate,
-		FolderID:          id,
+		FolderID:          folderID,
 		AssigneeID:        newTaskRequest.AssigneeId,
 		CreatorID:         creatorId,
 	})
@@ -69,47 +67,46 @@ func (t *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (t *TaskHandler) ListByFolder(w http.ResponseWriter, r *http.Request) {
-	folderId := chi.URLParam(r, "id")
-	if folderId == "" {
+	folderID := chi.URLParam(r, "id")
+	if folderID == "" {
 		http.Error(w, "Folder id is missing in URL", http.StatusBadRequest)
 		return
 	}
 	page := getQueryInt(r.URL.Query(), "page", 1)
 	pageSize := getQueryInt(r.URL.Query(), "pageSize", 10)
 	checkStatus := getQueryString(r.URL.Query(), "checkStatus", "")
+	requestID := getQueryString(r.URL.Query(), "requestID", "")
 
-	tasks, err := t.taskService.SearchByFolder(r.Context(), &service.SearchTasksParams{
-		FolderID:    folderId,
+	tasks, err := t.taskService.SearchByFolderID(r.Context(), &service.SearchTasksByFolderIDParams{
+		FolderID:    folderID,
 		Page:        page,
 		PageSize:    pageSize,
 		CheckStatus: checkStatus,
+		RequestID:   requestID,
 	})
 
 	if err != nil {
 		if errors.Is(err, store.ErrFolderNotFound) {
-			http.Error(w, fmt.Sprintf("Folder with ID: %s not found", folderId), http.StatusNotFound)
+			http.Error(w, fmt.Sprintf("Folder with ID: %s not found", folderID), http.StatusNotFound)
 			return
 		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(tasks); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to Encode DTO: %s", err.Error()), http.StatusInternalServerError)
-	}
+	encodeJSON(w, tasks)
 }
 
 func (t *TaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	taskId := chi.URLParam(r, "id")
-	if taskId == "" {
+	taskID := chi.URLParam(r, "id")
+	if taskID == "" {
 		http.Error(w, "Task id is missing in URL", http.StatusBadRequest)
 		return
 	}
 
-	if err := t.taskService.DeleteByID(r.Context(), taskId); err != nil {
+	if err := t.taskService.DeleteByID(r.Context(), taskID); err != nil {
 		if errors.Is(err, store.ErrTaskNotFound) {
-			http.Error(w, fmt.Sprintf("Task with ID: %s not found", taskId), http.StatusNotFound)
+			http.Error(w, fmt.Sprintf("Task with ID: %s not found", taskID), http.StatusNotFound)
 			return
 		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -124,8 +121,7 @@ func (t *TaskHandler) UpdateByAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var taskUpdate dto.TaskUpdateByAdminRequest
-	if err := json.NewDecoder(r.Body).Decode(&taskUpdate); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to decode JSON: %s", err.Error()), http.StatusBadRequest)
+	if ok := decodeJSON(w, r, &taskUpdate); !ok {
 		return
 	}
 
@@ -170,8 +166,7 @@ func (t *TaskHandler) UpdateByUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var taskUpdate dto.TaskUpdateByUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&taskUpdate); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to decode JSON: %s", err.Error()), http.StatusBadRequest)
+	if ok := decodeJSON(w, r, &taskUpdate); !ok {
 		return
 	}
 
@@ -236,7 +231,6 @@ func (t *TaskHandler) Details(w http.ResponseWriter, r *http.Request) {
 
 	isAdmin := isAdmin(roles)
 
-	w.Header().Set("Content-Type", "application/json")
 	switch {
 	case strings.EqualFold(view, "full"):
 		if !isAdmin {
@@ -258,10 +252,7 @@ func (t *TaskHandler) Details(w http.ResponseWriter, r *http.Request) {
 			CreatedAt:   task.CreatedAt,
 		}
 
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			http.Error(w, fmt.Sprintf("Failed to Encode DTO: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
+		encodeJSON(w, response)
 	case strings.EqualFold(view, "short"):
 		response := dto.TaskDetailsForUserResponse{
 			SoftName:    task.SoftName,
@@ -273,13 +264,40 @@ func (t *TaskHandler) Details(w http.ResponseWriter, r *http.Request) {
 			Comment:     task.Comment,
 		}
 
-		if err := json.NewEncoder(w).Encode(response); err != nil {
-			http.Error(w, fmt.Sprintf("Failed to Encode DTO: %s", err.Error()), http.StatusInternalServerError)
-			return
-		}
+		encodeJSON(w, response)
 	default:
 		http.Error(w, "unknown view", http.StatusNotFound)
 	}
+}
+
+func (t *TaskHandler) ListUserTasks(w http.ResponseWriter, r *http.Request) {
+	userID, ok := appmw.UserIdFromContext(r.Context())
+	if !ok || userID == "" {
+		http.Error(w, "UserID not found in context", http.StatusInternalServerError)
+		return
+	}
+
+	page := getQueryInt(r.URL.Query(), "page", 1)
+	pageSize := getQueryInt(r.URL.Query(), "pageSize", 10)
+	checkStatus := getQueryString(r.URL.Query(), "checkStatus", "")
+
+	tasks, err := t.taskService.SearchByUserID(r.Context(), &service.SearchTasksByUserIDParams{
+		AssigneeID:  userID,
+		Page:        page,
+		PageSize:    pageSize,
+		CheckStatus: checkStatus,
+	})
+
+	if err != nil {
+		if errors.Is(err, store.ErrUserNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	encodeJSON(w, tasks)
 }
 
 func isAdmin(s []string) bool {

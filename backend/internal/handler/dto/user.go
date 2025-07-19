@@ -11,3 +11,8 @@ type UserListResponse struct {
 	Data       []*UserPreview   `json:"data"`
 	Pagination PaginationResult `json:"pagination"`
 }
+
+type UserInfoResponse struct {
+	FirstName string
+	LastName  string
+}

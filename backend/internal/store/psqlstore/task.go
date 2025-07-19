@@ -14,6 +14,34 @@ type taskStoreImpl struct {
 	db *gorm.DB
 }
 
+func (t *taskStoreImpl) SearchByUserID(ctx context.Context, params *store.SearchTaskQueryByUserID) ([]*domain.Task, int64, error) {
+	var tasks []*domain.Task
+	var count int64
+
+	dbQuery := t.db.WithContext(ctx).Model(&domain.Task{}).Where("assignee_id = ?", params.AssigneeID).
+		Joins("JOIN folders f ON tasks.folder_id = f.id").
+		Where("f.deleted_at IS NULL")
+
+	if params.CheckStatus != "" {
+		dbQuery = dbQuery.Where("check_status = ?", params.CheckStatus)
+	}
+
+	if err := dbQuery.Count(&count).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if count == 0 {
+		return []*domain.Task{}, 0, nil
+	}
+
+	paginatedQuery := dbQuery.Order("created_at DESC").Scopes(store.PaginationWithParams(params.Page, params.PageSize)).Find(&tasks)
+	if paginatedQuery.Error != nil {
+		return nil, 0, paginatedQuery.Error
+	}
+
+	return tasks, count, nil
+}
+
 func (t *taskStoreImpl) GetTaskCountsForUsers(ctx context.Context, userIDs []string, inProgressStatuses, completedStatuses []domain.CheckStatus) ([]*store.TaskCountResult, error) {
 	var tasksCount []*store.TaskCountResult
 
@@ -44,7 +72,7 @@ func (t *taskStoreImpl) DeleteByID(ctx context.Context, taskID string) error {
 	return nil
 }
 
-func (t *taskStoreImpl) Search(ctx context.Context, params *store.SearchTaskQuery) ([]*domain.Task, int64, error) {
+func (t *taskStoreImpl) SearchByFolderID(ctx context.Context, params *store.SearchTaskQueryByFolderID) ([]*domain.Task, int64, error) {
 	var tasks []*domain.Task
 	var count int64
 
@@ -52,6 +80,11 @@ func (t *taskStoreImpl) Search(ctx context.Context, params *store.SearchTaskQuer
 
 	if params.CheckStatus != "" {
 		dbQuery = dbQuery.Where("check_status = ?", params.CheckStatus)
+	}
+
+	if params.RequestID != "" {
+		searchPattern := fmt.Sprintf("%%%s%%", params.RequestID)
+		dbQuery = dbQuery.Where("request_id ILIKE ?", searchPattern)
 	}
 
 	if err := dbQuery.Count(&count).Error; err != nil {

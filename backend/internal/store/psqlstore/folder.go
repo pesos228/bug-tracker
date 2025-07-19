@@ -2,6 +2,7 @@ package psqlstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/pesos228/bug-tracker/internal/domain"
@@ -11,6 +12,19 @@ import (
 
 type folderStoreImpl struct {
 	db *gorm.DB
+}
+
+func (f *folderStoreImpl) FindByID(ctx context.Context, folderID string) (*domain.Folder, error) {
+	var folder *domain.Folder
+	result := f.db.WithContext(ctx).Where("id = ?", folderID).First(&folder)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, store.ErrFolderNotFound
+		}
+		return nil, result.Error
+	}
+
+	return folder, nil
 }
 
 func (f *folderStoreImpl) IsExists(ctx context.Context, folderId string) (bool, error) {
@@ -27,13 +41,14 @@ func (f *folderStoreImpl) Search(ctx context.Context, page int, pageSize int, qu
 	var results []*store.FolderSearchResult
 	var count int64
 
-	countQuery := f.db.WithContext(ctx).Model(&domain.Folder{})
+	dbQuery := f.db.WithContext(ctx).Model(&domain.Folder{}).Where("deleted_at is NULL")
+
 	if query != "" {
 		searchPattern := fmt.Sprintf("%%%s%%", query)
-		countQuery = countQuery.Where("name ILIKE ?", searchPattern)
+		dbQuery = dbQuery.Where("name ILIKE ?", searchPattern)
 	}
 
-	if err := countQuery.Count(&count).Error; err != nil {
+	if err := dbQuery.Count(&count).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -41,13 +56,7 @@ func (f *folderStoreImpl) Search(ctx context.Context, page int, pageSize int, qu
 		return []*store.FolderSearchResult{}, 0, nil
 	}
 
-	dataQuery := f.db.WithContext(ctx).Model(&domain.Folder{})
-	if query != "" {
-		searchPattern := fmt.Sprintf("%%%s%%", query)
-		dataQuery = dataQuery.Where("name ILIKE ?", searchPattern)
-	}
-
-	err := dataQuery.
+	err := dbQuery.
 		Select("folders.id, folders.name, folders.created_by, folders.created_at, COUNT(tasks.id) as task_count").
 		Joins("LEFT JOIN tasks ON tasks.folder_id = folders.id").
 		Group("folders.id").

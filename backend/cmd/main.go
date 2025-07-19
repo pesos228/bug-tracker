@@ -62,6 +62,8 @@ func main() {
 	taskHandler := handler.NewTaskHandler(taskService)
 	userHandler := handler.NewUserHandler(userService)
 
+	authMiddleware := appmw.AuthMiddleware(sessionStore, authClient, authService, userStore)
+
 	r := chi.NewRouter()
 
 	r.Use(middleware.Logger)
@@ -71,17 +73,16 @@ func main() {
 	r.Get("/auth/callback", authHandler.HandleCallback)
 
 	r.Group(func(r chi.Router) {
-		r.Use(appmw.AuthMiddleware(sessionStore, authClient, authService))
+		r.Use(authMiddleware)
 
-		//TODO
-		// GET /api/users/me - инфа о пользователе
-		// GET /api/tasks/my - таски пользователя
+		r.Get("/api/users/me", userHandler.AboutUser)
+		r.Get("/api/tasks/my", taskHandler.ListUserTasks)
 		r.Get("/api/tasks/{id}", taskHandler.Details)
 		r.Patch("/api/tasks/{id}/review", taskHandler.UpdateByUser)
 	})
 
 	r.Group(func(r chi.Router) {
-		r.Use(appmw.AuthMiddleware(sessionStore, authClient, authService))
+		r.Use(authMiddleware)
 		r.Use(appmw.AdminOnly)
 
 		//TODO
@@ -90,7 +91,7 @@ func main() {
 		r.Post("/api/folders", folderHandler.Create)
 		r.Get("/api/folders", folderHandler.Search)
 		r.Get("/api/folders/{id}/tasks", taskHandler.ListByFolder)
-		// DELETE /api/folders/{id}
+		r.Delete("/api/folders/{id}", folderHandler.Delete)
 
 		r.Post("/api/folders/{id}/tasks", taskHandler.Create)
 		r.Patch("/api/tasks/{id}", taskHandler.UpdateByAdmin)

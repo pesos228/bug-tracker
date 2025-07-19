@@ -14,8 +14,16 @@ type SessionData struct {
 	AbsoluteExpiry int64  `json:"absolute_expiry"`
 }
 
-type SearchTaskQuery struct {
+type SearchTaskQueryByFolderID struct {
 	FolderID    string
+	RequestID   string
+	Page        int
+	PageSize    int
+	CheckStatus string
+}
+
+type SearchTaskQueryByUserID struct {
+	AssigneeID  string
 	Page        int
 	PageSize    int
 	CheckStatus string
@@ -69,7 +77,8 @@ type TaskStore interface {
 	Save(ctx context.Context, task *domain.Task) error
 	FindById(ctx context.Context, taskId string) (*domain.Task, error)
 	FindByUserId(ctx context.Context, page, pageSize int, userId string) ([]*domain.Task, int64, error)
-	Search(ctx context.Context, params *SearchTaskQuery) ([]*domain.Task, int64, error)
+	SearchByFolderID(ctx context.Context, params *SearchTaskQueryByFolderID) ([]*domain.Task, int64, error)
+	SearchByUserID(ctx context.Context, params *SearchTaskQueryByUserID) ([]*domain.Task, int64, error)
 	DeleteByID(ctx context.Context, taskID string) error
 	GetTaskCountsForUsers(ctx context.Context, userIDs []string, inProgressStatuses, completedStatuses []domain.CheckStatus) ([]*TaskCountResult, error)
 }
@@ -78,4 +87,5 @@ type FolderStore interface {
 	Save(ctx context.Context, folder *domain.Folder) error
 	Search(ctx context.Context, page, pageSize int, query string) ([]*FolderSearchResult, int64, error)
 	IsExists(ctx context.Context, folderId string) (bool, error)
+	FindByID(ctx context.Context, folderID string) (*domain.Folder, error)
 }

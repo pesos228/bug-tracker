@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/pesos228/bug-tracker/internal/domain"
@@ -12,10 +13,29 @@ import (
 type FolderService interface {
 	Save(ctx context.Context, name, userId string) (*dto.FolderCreatedResponse, error)
 	Search(ctx context.Context, page, pageSize int, query string) (*dto.FolderSearchResponse, error)
+	Delete(ctx context.Context, folderID string) error
 }
 
 type folerServiceImpl struct {
 	folderStore store.FolderStore
+}
+
+func (f *folerServiceImpl) Delete(ctx context.Context, folderID string) error {
+	fodler, err := f.folderStore.FindByID(ctx, folderID)
+	if err != nil {
+		if errors.Is(err, store.ErrFolderNotFound) {
+			return fmt.Errorf("%w: not found with ID: %s", err, folderID)
+		}
+		return fmt.Errorf("db error: %w", err)
+	}
+
+	fodler.Delete()
+
+	if err := f.folderStore.Save(ctx, fodler); err != nil {
+		return fmt.Errorf("db error: %w", err)
+	}
+
+	return nil
 }
 
 func (f *folerServiceImpl) Save(ctx context.Context, name, userId string) (*dto.FolderCreatedResponse, error) {
