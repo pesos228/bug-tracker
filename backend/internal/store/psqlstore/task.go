@@ -76,7 +76,9 @@ func (t *taskStoreImpl) SearchByFolderID(ctx context.Context, params *store.Sear
 	var tasks []*domain.Task
 	var count int64
 
-	dbQuery := t.db.WithContext(ctx).Model(&domain.Task{}).Where("folder_id = ?", params.FolderID)
+	dbQuery := t.db.WithContext(ctx).Model(&domain.Task{}).Where("folder_id = ?", params.FolderID).
+		Joins("JOIN folders f ON tasks.folder_id = f.id").
+		Where("f.deleted_at IS NULL")
 
 	if params.CheckStatus != "" {
 		dbQuery = dbQuery.Where("check_status = ?", params.CheckStatus)

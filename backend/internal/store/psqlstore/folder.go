@@ -16,7 +16,7 @@ type folderStoreImpl struct {
 
 func (f *folderStoreImpl) FindByID(ctx context.Context, folderID string) (*domain.Folder, error) {
 	var folder *domain.Folder
-	result := f.db.WithContext(ctx).Where("id = ?", folderID).First(&folder)
+	result := f.db.WithContext(ctx).Where("id = ?", folderID).Where("deleted_at is NULL").First(&folder)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, store.ErrFolderNotFound
@@ -30,7 +30,7 @@ func (f *folderStoreImpl) FindByID(ctx context.Context, folderID string) (*domai
 func (f *folderStoreImpl) IsExists(ctx context.Context, folderId string) (bool, error) {
 	var count int64
 
-	if err := f.db.WithContext(ctx).Model(domain.Folder{}).Where("id = ?", folderId).Count(&count).Error; err != nil {
+	if err := f.db.WithContext(ctx).Model(domain.Folder{}).Where("id = ?", folderId).Where("deleted_at is NULL").Count(&count).Error; err != nil {
 		return false, err
 	}
 
