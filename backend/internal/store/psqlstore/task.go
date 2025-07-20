@@ -14,6 +14,20 @@ type taskStoreImpl struct {
 	db *gorm.DB
 }
 
+func (t *taskStoreImpl) FindByFolderIdWithUserInfo(ctx context.Context, folderID string) ([]*store.TasksWithUserInfo, error) {
+	var tasks []*store.TasksWithUserInfo
+	result := t.db.WithContext(ctx).Model(domain.Task{}).
+		Select("tasks.*, users.first_name, users.last_name").
+		Joins("LEFT JOIN users ON users.id = tasks.assignee_id").
+		Where("tasks.folder_id = ?", folderID).
+		Order("tasks.created_at DESC").
+		Find(&tasks)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return tasks, nil
+}
+
 func (t *taskStoreImpl) SearchByUserID(ctx context.Context, params *store.SearchTaskQueryByUserID) ([]*domain.Task, int64, error) {
 	var tasks []*domain.Task
 	var count int64

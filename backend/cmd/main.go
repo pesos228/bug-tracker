@@ -10,6 +10,7 @@ import (
 	"github.com/pesos228/bug-tracker/internal/auth"
 	"github.com/pesos228/bug-tracker/internal/config"
 	"github.com/pesos228/bug-tracker/internal/domain"
+	"github.com/pesos228/bug-tracker/internal/excel"
 	"github.com/pesos228/bug-tracker/internal/handler"
 	"github.com/pesos228/bug-tracker/internal/service"
 	"github.com/pesos228/bug-tracker/internal/store/psqlstore"
@@ -46,6 +47,8 @@ func main() {
 
 	sessionTTL := time.Duration(cfg.Auth.SSOMaxLifespanSeconds) * time.Second
 
+	reportGenerator := excel.NewReportGenerator()
+
 	stateStore := redisstore.NewRedisStateStore(redisClient)
 	sessionStore := redisstore.NewRedisSessionStore(redisClient, sessionTTL)
 	userStore := psqlstore.NewPsqlUserStore(psqlDb)
@@ -56,9 +59,10 @@ func main() {
 	folderService := service.NewFolderService(folderStore)
 	taskService := service.NewTaskService(taskStore, userStore, folderStore)
 	userService := service.NewUserService(userStore, taskStore)
+	reportService := service.NewReportService(folderStore, taskStore, reportGenerator)
 
 	authHandler := handler.NewAuthHandler(authService, sessionTTL)
-	folderHandler := handler.NewFolderHandler(folderService)
+	folderHandler := handler.NewFolderHandler(folderService, reportService)
 	taskHandler := handler.NewTaskHandler(taskService)
 	userHandler := handler.NewUserHandler(userService)
 
@@ -85,7 +89,6 @@ func main() {
 		r.Use(authMiddleware)
 		r.Use(appmw.AdminOnly)
 
-		//TODO
 		r.Get("/api/users", userHandler.Search)
 
 		r.Post("/api/folders", folderHandler.Create)
@@ -97,7 +100,7 @@ func main() {
 		r.Patch("/api/tasks/{id}", taskHandler.UpdateByAdmin)
 		r.Delete("/api/tasks/{id}", taskHandler.Delete)
 
-		// GET /api/folders/{id}/reports
+		r.Get("/api/folders/{id}/reports", folderHandler.Download)
 	})
 
 	log.Println("Server started on", cfg.AppPort)

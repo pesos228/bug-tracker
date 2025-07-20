@@ -16,10 +16,11 @@ import (
 
 type FolderHandler struct {
 	folderService service.FolderService
+	reportService service.ReportService
 }
 
-func NewFolderHandler(folderService service.FolderService) *FolderHandler {
-	return &FolderHandler{folderService: folderService}
+func NewFolderHandler(folderService service.FolderService, reportService service.ReportService) *FolderHandler {
+	return &FolderHandler{folderService: folderService, reportService: reportService}
 }
 
 func (f *FolderHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -76,4 +77,28 @@ func (f *FolderHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (f *FolderHandler) Download(w http.ResponseWriter, r *http.Request) {
+	folderID := chi.URLParam(r, "id")
+	if folderID == "" {
+		http.Error(w, "Folder id is missing in URL", http.StatusBadRequest)
+		return
+	}
+
+	report, err := f.reportService.Create(r.Context(), folderID)
+	if err != nil {
+		if errors.Is(err, store.ErrFolderNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", report.FileName))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", report.Data.Len()))
+
+	w.Write(report.Data.Bytes())
 }

@@ -46,6 +46,12 @@ type FolderSearchResult struct {
 	TaskCount int64
 }
 
+type TasksWithUserInfo struct {
+	domain.Task
+	FirstName string
+	LastName  string
+}
+
 type PreloadOption string
 
 const (
@@ -77,6 +83,7 @@ type TaskStore interface {
 	Save(ctx context.Context, task *domain.Task) error
 	FindById(ctx context.Context, taskId string) (*domain.Task, error)
 	FindByUserId(ctx context.Context, page, pageSize int, userId string) ([]*domain.Task, int64, error)
+	FindByFolderIdWithUserInfo(ctx context.Context, folderID string) ([]*TasksWithUserInfo, error)
 	SearchByFolderID(ctx context.Context, params *SearchTaskQueryByFolderID) ([]*domain.Task, int64, error)
 	SearchByUserID(ctx context.Context, params *SearchTaskQueryByUserID) ([]*domain.Task, int64, error)
 	DeleteByID(ctx context.Context, taskID string) error
