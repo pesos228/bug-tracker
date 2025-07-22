@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -56,4 +57,27 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, redirectUrl, http.StatusFound)
+}
+
+func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	sessionId, err := r.Cookie("session_id")
+	if err != nil {
+		if errors.Is(err, http.ErrNoCookie) {
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
+		} else {
+			http.Error(w, "Invalid cookie", http.StatusBadRequest)
+			return
+		}
+	}
+
+	logoutUrl, err := h.authService.PrepareLogout(r.Context(), sessionId.Value)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{Name: "session_id", Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode})
+
+	http.Redirect(w, r, logoutUrl, http.StatusFound)
 }

@@ -53,3 +53,7 @@ func New(ctx context.Context, cfg *config.AuthConfig) (*Client, error) {
 		Oauth:    ouath2Config,
 	}, nil
 }
+
+func (c *Client) LogoutURL(cfg config.AuthConfig) string {
+	return fmt.Sprintf("%s/realms/%s/protocol/openid-connect/logout", cfg.PublicBaseUrl, cfg.Realm)
+}

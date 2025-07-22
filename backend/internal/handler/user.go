@@ -50,9 +50,16 @@ func (u *UserHandler) AboutUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	roles, ok := appmw.UserRolesFromContext(r.Context())
+	if !ok || len(roles) == 0 {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
 	response := dto.UserInfoResponse{
 		FirstName: firstName,
 		LastName:  lastName,
+		IsAdmin:   isAdmin(roles),
 	}
 
 	encodeJSON(w, response)

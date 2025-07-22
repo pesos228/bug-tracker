@@ -15,4 +15,5 @@ type UserListResponse struct {
 type UserInfoResponse struct {
 	FirstName string
 	LastName  string
+	IsAdmin   bool
 }

@@ -55,7 +55,14 @@ func main() {
 	folderStore := psqlstore.NewPsqlFolderStore(psqlDb)
 	taskStore := psqlstore.NewPsqlTaskStore(psqlDb)
 
-	authService := service.NewAuthService(authClient, sessionStore, stateStore, userStore)
+	authService := service.NewAuthService(&service.AuthServiceDeps{
+		AuthClient:   authClient,
+		SessionStore: sessionStore,
+		StateStore:   stateStore,
+		UserStore:    userStore,
+		AuthConfig:   &cfg.Auth,
+		AppPublicUrl: cfg.AppPublicUrl,
+	})
 	folderService := service.NewFolderService(folderStore)
 	taskService := service.NewTaskService(taskStore, userStore, folderStore)
 	userService := service.NewUserService(userStore, taskStore)
@@ -75,6 +82,7 @@ func main() {
 
 	r.Get("/auth/login", authHandler.HandleLogin)
 	r.Get("/auth/callback", authHandler.HandleCallback)
+	r.Get("/auth/logout", authHandler.HandleLogout)
 
 	r.Group(func(r chi.Router) {
 		r.Use(authMiddleware)
