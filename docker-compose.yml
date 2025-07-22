@@ -74,6 +74,19 @@ services:
       - redis
       - postgres
       - keycloak
+  
+  frontend:
+    container_name: frontend
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173" 
+    env_file:
+      - .env
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host
 
 volumes:
   redis-data:
