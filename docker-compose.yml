@@ -80,13 +80,14 @@ services:
     build: ./frontend
     restart: unless-stopped
     ports:
-      - "5173:5173" 
+      - "5173:5173"
     env_file:
       - .env
     volumes:
       - ./frontend:/app
       - frontend-node-modules:/app/node_modules
-    command: npm run dev -- --host
+    depends_on:
+      - backend
 
 volumes:
   redis-data:

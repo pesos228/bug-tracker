@@ -8,24 +8,31 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [authError, setAuthError] = useState(null); 
 
   const { enqueueSnackbar } = useSnackbar();
-
+  
   const fetchUser = useCallback(async () => {
+    setIsInitializing(true);
+    setAuthError(null);
     try {
       const userData = await getUserProfile();
       setUser(userData);
     } catch (error) {
       setUser(null);
-      
+
       if (error.code === 'ERR_NETWORK') {
+        setAuthError('network');
         enqueueSnackbar('Ошибка соединения с сервером. Попробуйте позже.', { 
           variant: 'error',
         });
       } else if (error.response && error.response.status >= 500) {
+        setAuthError('auth');
         enqueueSnackbar('На сервере произошла непредвиденная ошибка.', { 
           variant: 'error' 
         });
+      } else{
+        setAuthError('auth');
       }
     } finally {
       setIsInitializing(false);
@@ -57,6 +64,15 @@ export const AuthProvider = ({ children }) => {
     }
   }, [enqueueSnackbar]);
 
+  useEffect(() => {
+    if (!isInitializing) {
+      const preloader = document.getElementById('preloader');
+      if (preloader) {
+        preloader.classList.add('app-preloader--hidden');
+      }
+    }
+  }, [isInitializing])
+
   const value = {
     user,
     isInitializing,
@@ -65,6 +81,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     fetchUser,
+    authError
   };
 
   return (

@@ -7,8 +7,3 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <App />
   </React.StrictMode>
 );
-
-const preloader = document.getElementById('preloader');
-if (preloader) {
-  preloader.style.display = 'none';
-}
