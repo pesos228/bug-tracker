@@ -11,7 +11,9 @@ export default defineConfig(({ mode }) => {
       host: true,
       port: 5173,
       hmr: {
-        clientPort: 5173,
+        clientPort: 443,
+        host: appHost,
+        protocol: 'wss',
       },
       watch: {
         usePolling: true,

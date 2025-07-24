@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -25,7 +26,9 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to prepare login", http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, loginUrl, http.StatusFound)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"login_url": loginUrl})
 }
 
 func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
@@ -48,22 +51,14 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   int(h.sessionTTL.Seconds()),
 	})
 
-	var redirectUrl string
-	if redirectCookie, err := r.Cookie("redirect_after_login"); err == nil {
-		redirectUrl = redirectCookie.Value
-		http.SetCookie(w, &http.Cookie{Name: "redirect_after_login", Value: "", MaxAge: -1, Path: "/"})
-	} else {
-		redirectUrl = "/"
-	}
-
-	http.Redirect(w, r, redirectUrl, http.StatusFound)
+	http.Redirect(w, r, "/auth-callback-success", http.StatusFound)
 }
 
 func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	sessionId, err := r.Cookie("session_id")
 	if err != nil {
 		if errors.Is(err, http.ErrNoCookie) {
-			http.Redirect(w, r, "/", http.StatusFound)
+			w.WriteHeader(http.StatusOK)
 			return
 		} else {
 			http.Error(w, "Invalid cookie", http.StatusBadRequest)
@@ -79,5 +74,7 @@ func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 
 	http.SetCookie(w, &http.Cookie{Name: "session_id", Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: true, SameSite: http.SameSiteLaxMode})
 
-	http.Redirect(w, r, logoutUrl, http.StatusFound)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"logout_url": logoutUrl})
 }

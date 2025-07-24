@@ -24,14 +24,14 @@ func AuthMiddleware(sessionStore store.SessionStore,
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			sessionId, err := r.Cookie("session_id")
 			if err != nil || sessionId == nil {
-				redirectToLogin(w, r)
+				sendUnauthorized(w)
 				return
 			}
 
 			sessionData, err := sessionStore.GetSession(r.Context(), sessionId.Value)
 			if err != nil {
 				if err == store.ErrSessionNotFound {
-					redirectToLogin(w, r)
+					sendUnauthorized(w)
 					return
 				}
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -44,13 +44,13 @@ func AuthMiddleware(sessionStore store.SessionStore,
 				if errors.As(err, &tokenExpiredError) {
 					newVerifiedToken, refreshErr := handleTokenRefresh(r, sessionId.Value, sessionData, authService, sessionStore, authClient)
 					if refreshErr != nil {
-						redirectToLogin(w, r)
+						sendUnauthorized(w)
 						return
 					}
 					verifiedToken = newVerifiedToken
 					go syncUser(context.Background(), newVerifiedToken, userStore)
 				} else {
-					redirectToLogin(w, r)
+					sendUnauthorized(w)
 					return
 				}
 			}
@@ -72,15 +72,7 @@ func AuthMiddleware(sessionStore store.SessionStore,
 	}
 }
 
-func redirectToLogin(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     "redirect_after_login",
-		Value:    r.URL.Path,
-		Path:     "/",
-		MaxAge:   300,
-		HttpOnly: true,
-	})
-
+func sendUnauthorized(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:   "session_id",
 		Value:  "",
@@ -88,7 +80,7 @@ func redirectToLogin(w http.ResponseWriter, r *http.Request) {
 		MaxAge: -1,
 	})
 
-	http.Redirect(w, r, "/auth/login", http.StatusFound)
+	http.Error(w, "Authentication failed", http.StatusUnauthorized)
 }
 
 func handleTokenRefresh(r *http.Request,

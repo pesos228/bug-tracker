@@ -7,10 +7,11 @@ keycloak.local {
 }
 
 myapp.local {
-    handle_path /api/* {
+    handle /api/* {
         reverse_proxy backend:8081
     }
-    handle_path /auth/* {
+
+    handle /auth/* {
         reverse_proxy backend:8081
     }
 

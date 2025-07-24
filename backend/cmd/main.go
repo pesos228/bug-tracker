@@ -80,9 +80,9 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	r.Get("/auth/login", authHandler.HandleLogin)
+	r.Get("/api/auth/login-url", authHandler.HandleLogin)
 	r.Get("/auth/callback", authHandler.HandleCallback)
-	r.Get("/auth/logout", authHandler.HandleLogout)
+	r.Get("/api/auth/logout-url", authHandler.HandleLogout)
 
 	r.Group(func(r chi.Router) {
 		r.Use(authMiddleware)
