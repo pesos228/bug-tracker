@@ -1,12 +1,16 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, Outlet } from 'react-router-dom';
 import LandingPage from '../pages/LandingPage.jsx';
 import DashboardPage from '../pages/DashboardPage.jsx';
 import LoginPage from '../pages/LoginPage.jsx';
 import ProtectedRoute from './ProtectedRoute.jsx';
-import { useAuth } from '../context/AuthContext.jsx';
-import { Box, CircularProgress } from '@mui/material';
+import { Box, CircularProgress, Typography, Button } from '@mui/material';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
+import Layout from '../components/Layout.jsx';
+import FoldersPage from '../pages/FoldersPage.jsx';
+import FolderTasksPage from '../pages/FolderTasksPage.jsx';
+import TaskDetailsPage from '../pages/TaskDetailsPage.jsx';
+import CreateTaskPage from '../pages/CreateTaskPage.jsx';
 
 const PostLoginHandler = () => {
   const navigate = useNavigate();
@@ -25,24 +29,33 @@ const PostLoginHandler = () => {
   );
 };
 
+const ProtectedLayout = () => {
+  return (
+    <ProtectedRoute>
+      <Layout>
+        <Outlet />
+      </Layout>
+    </ProtectedRoute>
+  );
+};
+
+const MyTasksPage = () => <Typography variant="h4">Мои задачи</Typography>;
 
 const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      
       <Route path="/login" element={<LoginPage />} />
-      
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <DashboardPage />
-          </ProtectedRoute>
-        }
-      />
-      
       <Route path="/auth-callback-success" element={<PostLoginHandler />} />
+      
+      <Route element={<ProtectedLayout />}>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/tasks" element={<MyTasksPage />} />
+        <Route path="/folders" element={<FoldersPage />} />
+        <Route path="/folders/:folderId/tasks" element={<FolderTasksPage />} /> 
+        <Route path="/tasks/:taskId" element={<TaskDetailsPage />} />
+        <Route path="/folders/:folderId/tasks/create" element={<CreateTaskPage />} /> 
+      </Route>
       
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

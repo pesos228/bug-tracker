@@ -101,6 +101,7 @@ func main() {
 
 		r.Post("/api/folders", folderHandler.Create)
 		r.Get("/api/folders", folderHandler.Search)
+		r.Get("/api/folders/{id}", folderHandler.Details)
 		r.Get("/api/folders/{id}/tasks", taskHandler.ListByFolder)
 		r.Delete("/api/folders/{id}", folderHandler.Delete)
 

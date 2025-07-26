@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/essentialkaos/translit/v3"
 	"github.com/go-chi/chi/v5"
 	"github.com/pesos228/bug-tracker/internal/appmw"
 	"github.com/pesos228/bug-tracker/internal/handler/dto"
@@ -97,8 +98,28 @@ func (f *FolderHandler) Download(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", report.FileName))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", translit.ICAO(report.FileName)))
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", report.Data.Len()))
 
 	w.Write(report.Data.Bytes())
+}
+
+func (f *FolderHandler) Details(w http.ResponseWriter, r *http.Request) {
+	folderID := chi.URLParam(r, "id")
+	if folderID == "" {
+		http.Error(w, "Folder id is missing in URL", http.StatusBadRequest)
+		return
+	}
+
+	details, err := f.folderService.Details(r.Context(), folderID)
+	if err != nil {
+		if errors.Is(err, store.ErrFolderNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	encodeJSON(w, details)
 }

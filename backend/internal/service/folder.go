@@ -14,10 +14,27 @@ type FolderService interface {
 	Save(ctx context.Context, name, userId string) (*dto.FolderCreatedResponse, error)
 	Search(ctx context.Context, page, pageSize int, query string) (*dto.FolderSearchResponse, error)
 	Delete(ctx context.Context, folderID string) error
+	Details(ctx context.Context, folderId string) (*dto.FolderDetailsResponse, error)
 }
 
 type folerServiceImpl struct {
 	folderStore store.FolderStore
+}
+
+func (f *folerServiceImpl) Details(ctx context.Context, folderId string) (*dto.FolderDetailsResponse, error) {
+	folder, err := f.folderStore.FindByID(ctx, folderId, store.WithCreator)
+	if err != nil {
+		if errors.Is(err, store.ErrFolderNotFound) {
+			return nil, fmt.Errorf("%w: with ID: %s", err, folderId)
+		}
+		return nil, fmt.Errorf("db error: %w", err)
+	}
+
+	return &dto.FolderDetailsResponse{
+		Name:           folder.Name,
+		CreatedAt:      folder.CreatedAt,
+		AssigneePerson: fmt.Sprintf("%s %s", folder.Creator.LastName, folder.Creator.FirstName),
+	}, nil
 }
 
 func (f *folerServiceImpl) Delete(ctx context.Context, folderID string) error {

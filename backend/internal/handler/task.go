@@ -221,15 +221,16 @@ func (t *TaskHandler) Details(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		if errors.Is(err, service.ErrNotAssignee) {
-			http.Error(w, err.Error(), http.StatusForbidden)
-			return
-		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	isAdmin := isAdmin(roles)
+
+	if !isAdmin && task.AssigneeID != userID {
+		http.Error(w, fmt.Sprintf("user with ID: %s is not assignee task with ID: %s", userID, taskID), http.StatusForbidden)
+		return
+	}
 
 	switch {
 	case strings.EqualFold(view, "full"):
@@ -239,29 +240,31 @@ func (t *TaskHandler) Details(w http.ResponseWriter, r *http.Request) {
 		}
 
 		response := dto.TaskDetailsForAdminResponse{
-			ID:          task.ID,
-			SoftName:    task.SoftName,
-			RequestID:   task.RequestID,
-			Description: task.Description,
-			AssigneeID:  task.AssigneeID,
-			FolderID:    task.FolderID,
-			CheckDate:   task.CheckDate,
-			CheckStatus: task.CheckStatus,
-			CheckResult: task.CheckResult,
-			Comment:     task.Comment,
-			CreatedAt:   task.CreatedAt,
+			ID:                task.ID,
+			SoftName:          task.SoftName,
+			RequestID:         task.RequestID,
+			Description:       task.Description,
+			AssigneeID:        task.AssigneeID,
+			FolderID:          task.FolderID,
+			CheckDate:         task.CheckDate,
+			CheckStatus:       task.CheckStatus,
+			CheckResult:       task.CheckResult,
+			Comment:           task.Comment,
+			CreatedAt:         task.CreatedAt,
+			TestEnvDateUpdate: task.TestEnvDateUpdate,
 		}
 
 		encodeJSON(w, response)
 	case strings.EqualFold(view, "short"):
 		response := dto.TaskDetailsForUserResponse{
-			SoftName:    task.SoftName,
-			RequestID:   task.RequestID,
-			Description: task.Description,
-			CheckDate:   task.CheckDate,
-			CheckStatus: task.CheckStatus,
-			CheckResult: task.CheckResult,
-			Comment:     task.Comment,
+			SoftName:          task.SoftName,
+			RequestID:         task.RequestID,
+			Description:       task.Description,
+			CheckDate:         task.CheckDate,
+			CheckStatus:       task.CheckStatus,
+			CheckResult:       task.CheckResult,
+			Comment:           task.Comment,
+			TestEnvDateUpdate: task.TestEnvDateUpdate,
 		}
 
 		encodeJSON(w, response)

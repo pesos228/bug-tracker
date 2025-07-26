@@ -55,7 +55,8 @@ type TasksWithUserInfo struct {
 type PreloadOption string
 
 const (
-	WithTasks PreloadOption = "Tasks"
+	WithTasks   PreloadOption = "Tasks"
+	WithCreator PreloadOption = "Creator"
 )
 
 type StateStore interface {
@@ -94,5 +95,5 @@ type FolderStore interface {
 	Save(ctx context.Context, folder *domain.Folder) error
 	Search(ctx context.Context, page, pageSize int, query string) ([]*FolderSearchResult, int64, error)
 	IsExists(ctx context.Context, folderId string) (bool, error)
-	FindByID(ctx context.Context, folderID string) (*domain.Folder, error)
+	FindByID(ctx context.Context, folderID string, preloads ...PreloadOption) (*domain.Folder, error)
 }

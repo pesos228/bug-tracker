@@ -14,9 +14,12 @@ type folderStoreImpl struct {
 	db *gorm.DB
 }
 
-func (f *folderStoreImpl) FindByID(ctx context.Context, folderID string) (*domain.Folder, error) {
+func (f *folderStoreImpl) FindByID(ctx context.Context, folderID string, preloads ...store.PreloadOption) (*domain.Folder, error) {
 	var folder *domain.Folder
-	result := f.db.WithContext(ctx).Where("id = ?", folderID).Where("deleted_at is NULL").First(&folder)
+	query := f.db.WithContext(ctx)
+	query = PreLoad(query, preloads...)
+
+	result := query.Where("id = ?", folderID).Where("deleted_at is NULL").First(&folder)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, store.ErrFolderNotFound

@@ -13,6 +13,7 @@ type Folder struct {
 	CreatedBy string     `gorm:"type:uuid;not null"`
 	CreatedAt time.Time  `gorm:"type:timestamptz;not null"`
 	DeletedAt *time.Time `gorm:"type:timestamptz"`
+	Creator   *User      `gorm:"foreignKey:CreatedBy"`
 }
 
 func NewFolder(name, userId string) (*Folder, error) {

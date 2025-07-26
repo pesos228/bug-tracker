@@ -64,7 +64,7 @@ func (u *userStoreImpl) FindAll(ctx context.Context, page, pageSize int, preload
 	var count int64
 
 	query := u.db.WithContext(ctx).Model(&domain.User{})
-	query = preLoad(query, preloads...)
+	query = PreLoad(query, preloads...)
 
 	if err := query.Count(&count).Error; err != nil {
 		return nil, 0, err
@@ -86,7 +86,7 @@ func (u *userStoreImpl) FindById(ctx context.Context, userId string, preloads ..
 	var user domain.User
 
 	query := u.db.WithContext(ctx)
-	query = preLoad(query, preloads...)
+	query = PreLoad(query, preloads...)
 
 	result := query.First(&user, "id = ?", userId)
 
@@ -100,7 +100,7 @@ func (u *userStoreImpl) FindById(ctx context.Context, userId string, preloads ..
 	return &user, nil
 }
 
-func preLoad(query *gorm.DB, preloads ...store.PreloadOption) *gorm.DB {
+func PreLoad(query *gorm.DB, preloads ...store.PreloadOption) *gorm.DB {
 	for _, pl := range preloads {
 		query = query.Preload(string(pl))
 	}

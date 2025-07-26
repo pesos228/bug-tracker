@@ -99,6 +99,10 @@ func (t *Task) validate() error {
 		return fmt.Errorf("%w: checkResult cannot be 'success' when status is 'failed_check'", ErrValidation)
 	}
 
+	if t.CheckDate != nil && (t.CheckStatus == NotChecked || t.CheckResult == "") {
+		return fmt.Errorf("%w: if a check date is specified, the status cannot be `not_checked` and the result cannot be empty", ErrValidation)
+	}
+
 	return nil
 }
 

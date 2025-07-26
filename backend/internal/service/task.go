@@ -119,22 +119,19 @@ func (t *taskServiceImpl) GetDetails(ctx context.Context, taskID string, userID 
 		return nil, fmt.Errorf("db error: %w", err)
 	}
 
-	if task.AssigneeID != userID {
-		return nil, fmt.Errorf("%w, task witd ID: %s", ErrNotAssignee, taskID)
-	}
-
 	return &TaskDetails{
-		ID:          task.ID,
-		SoftName:    task.SoftName,
-		RequestID:   task.RequestID,
-		Description: task.Description,
-		AssigneeID:  task.AssigneeID,
-		FolderID:    task.FolderID,
-		CheckDate:   task.CheckDate,
-		CheckStatus: (*string)(&task.CheckStatus),
-		CheckResult: (*string)(&task.CheckResult),
-		Comment:     &task.Comment,
-		CreatedAt:   task.CreatedAt,
+		ID:                task.ID,
+		SoftName:          task.SoftName,
+		RequestID:         task.RequestID,
+		Description:       task.Description,
+		AssigneeID:        task.AssigneeID,
+		FolderID:          task.FolderID,
+		CheckDate:         task.CheckDate,
+		CheckStatus:       (*string)(&task.CheckStatus),
+		CheckResult:       (*string)(&task.CheckResult),
+		Comment:           &task.Comment,
+		CreatedAt:         task.CreatedAt,
+		TestEnvDateUpdate: task.TestEnvDateUpdate,
 	}, nil
 }
 
