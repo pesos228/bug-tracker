@@ -283,12 +283,14 @@ func (t *TaskHandler) ListUserTasks(w http.ResponseWriter, r *http.Request) {
 	page := getQueryInt(r.URL.Query(), "page", 1)
 	pageSize := getQueryInt(r.URL.Query(), "pageSize", 10)
 	checkStatus := getQueryString(r.URL.Query(), "checkStatus", "")
+	requestID := getQueryString(r.URL.Query(), "requestID", "")
 
 	tasks, err := t.taskService.SearchByUserID(r.Context(), &service.SearchTasksByUserIDParams{
 		AssigneeID:  userID,
 		Page:        page,
 		PageSize:    pageSize,
 		CheckStatus: checkStatus,
+		RequestID:   requestID,
 	})
 
 	if err != nil {

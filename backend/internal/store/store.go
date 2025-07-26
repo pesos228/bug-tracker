@@ -27,6 +27,7 @@ type SearchTaskQueryByUserID struct {
 	Page        int
 	PageSize    int
 	CheckStatus string
+	RequestID   string
 }
 
 type SearchUsersQuery struct {

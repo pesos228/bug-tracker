@@ -34,6 +34,7 @@ type SearchTasksByUserIDParams struct {
 	Page        int
 	PageSize    int
 	CheckStatus string
+	RequestID   string
 }
 
 type UpdateTaskParams struct {
@@ -94,6 +95,7 @@ func (t *taskServiceImpl) SearchByUserID(ctx context.Context, params *SearchTask
 		Page:        params.Page,
 		PageSize:    params.PageSize,
 		CheckStatus: params.CheckStatus,
+		RequestID:   params.RequestID,
 	})
 
 	if err != nil {

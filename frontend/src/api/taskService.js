@@ -36,3 +36,15 @@ export const createTask = async (folderId, taskData) => {
   const response = await apiClient.post(`/folders/${folderId}/tasks`, taskData);
   return response.data;
 };
+
+export const getMyTasks = async ({ page = 1, pageSize = 10, checkStatus = '', requestID = '' }) => {
+  const params = new URLSearchParams({
+    page,
+    pageSize,
+    checkStatus,
+    requestID,
+  });
+
+  const response = await apiClient.get(`/tasks/my?${params.toString()}`);
+  return response.data;
+};

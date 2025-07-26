@@ -11,6 +11,7 @@ import FoldersPage from '../pages/FoldersPage.jsx';
 import FolderTasksPage from '../pages/FolderTasksPage.jsx';
 import TaskDetailsPage from '../pages/TaskDetailsPage.jsx';
 import CreateTaskPage from '../pages/CreateTaskPage.jsx';
+import MyTasksPage from '../pages/MyTasksPage.jsx';
 
 const PostLoginHandler = () => {
   const navigate = useNavigate();
@@ -38,8 +39,6 @@ const ProtectedLayout = () => {
     </ProtectedRoute>
   );
 };
-
-const MyTasksPage = () => <Typography variant="h4">Мои задачи</Typography>;
 
 const AppRoutes = () => {
   return (

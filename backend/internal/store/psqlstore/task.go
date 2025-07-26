@@ -40,6 +40,11 @@ func (t *taskStoreImpl) SearchByUserID(ctx context.Context, params *store.Search
 		dbQuery = dbQuery.Where("check_status = ?", params.CheckStatus)
 	}
 
+	if params.RequestID != "" {
+		searchPattern := fmt.Sprintf("%%%s%%", params.RequestID)
+		dbQuery = dbQuery.Where("request_id ILIKE ?", searchPattern)
+	}
+
 	if err := dbQuery.Count(&count).Error; err != nil {
 		return nil, 0, err
 	}
