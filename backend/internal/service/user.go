@@ -53,6 +53,13 @@ func (u *userServiceImpl) GetStats(ctx context.Context, userID string) (*dto.Use
 		return nil, fmt.Errorf("error while getting task counts: %w", err)
 	}
 
+	if len(taskCounts) == 0 {
+		return &dto.UserStatsResponse{
+			InProgressTasksCount: 0,
+			CompletedTasksCount:  0,
+		}, nil
+	}
+
 	return &dto.UserStatsResponse{
 		InProgressTasksCount: taskCounts[0].InProgressTasksCount,
 		CompletedTasksCount:  taskCounts[0].CompletedTasksCount,
