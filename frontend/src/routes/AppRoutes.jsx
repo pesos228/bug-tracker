@@ -12,6 +12,7 @@ import FolderTasksPage from '../pages/FolderTasksPage.jsx';
 import TaskDetailsPage from '../pages/TaskDetailsPage.jsx';
 import CreateTaskPage from '../pages/CreateTaskPage.jsx';
 import MyTasksPage from '../pages/MyTasksPage.jsx';
+import ProfilePage from '../pages/ProfilePage.jsx';
 
 const PostLoginHandler = () => {
   const navigate = useNavigate();
@@ -54,6 +55,7 @@ const AppRoutes = () => {
         <Route path="/folders/:folderId/tasks" element={<FolderTasksPage />} /> 
         <Route path="/tasks/:taskId" element={<TaskDetailsPage />} />
         <Route path="/folders/:folderId/tasks/create" element={<CreateTaskPage />} /> 
+        <Route path="/profile" element={<ProfilePage />} />
       </Route>
       
       <Route path="*" element={<NotFoundPage />} />

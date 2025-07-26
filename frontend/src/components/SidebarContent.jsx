@@ -68,12 +68,14 @@ const SidebarContent = () => {
         <Divider />
         <List>
           <ListItem disablePadding>
-            <ListItemButton disabled>
-              <ListItemIcon>
-                <AccountCircleIcon />
-              </ListItemIcon>
-              <ListItemText primary="Мой профиль" />
-            </ListItemButton>
+            <NavLink end to="/profile" style={{ textDecoration: 'none', color: 'inherit', width: '100%' }}>
+              {({ isActive }) => (
+                <ListItemButton sx={navLinkStyles({ isActive })}>
+                  <ListItemIcon><AccountCircleIcon /></ListItemIcon>
+                  <ListItemText primary="Мой профиль" />
+                </ListItemButton>
+              )}
+            </NavLink>
           </ListItem>
         </List>
       </Box>

@@ -1,15 +1,7 @@
 import React, { useState } from 'react';
-import { 
-  Box, 
-  AppBar, 
-  Toolbar, 
-  IconButton, 
-  Typography, 
-  Drawer, 
-  CssBaseline, 
-  Button 
-} from '@mui/material';
+import { Box, AppBar, Toolbar, IconButton, Typography, Drawer, CssBaseline, Button } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import BugReportIcon from '@mui/icons-material/BugReport';
 import { useAuth } from '../context/AuthContext';
 import SidebarContent from './SidebarContent';
 
@@ -23,11 +15,13 @@ const Layout = ({ children }) => {
     setMobileOpen(!mobileOpen);
   };
 
+  const drawer = <SidebarContent />;
+
   const drawerStyles = {
     '& .MuiDrawer-paper': {
       boxSizing: 'border-box',
       width: drawerWidth,
-      backgroundColor: 'background.default',
+      backgroundColor: 'background.default', 
       borderRight: '1px solid rgba(255, 255, 255, 0.12)',
     },
   };
@@ -35,15 +29,16 @@ const Layout = ({ children }) => {
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
-      
       <AppBar
         position="fixed"
         elevation={0}
         sx={{
-          width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
+          width: { md: `calc(100% - ${drawerWidth}px)` },
           ml: { md: `${drawerWidth}px` },
-          backgroundColor: 'background.default',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+          width: { xs: '100%' },
+          backgroundColor: 'background.paper',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
         }}
       >
         <Toolbar>
@@ -56,19 +51,19 @@ const Layout = ({ children }) => {
           >
             <MenuIcon />
           </IconButton>
-         
-          <Typography
-            variant="h6"
-            noWrap
-            component="div"
+          
+          <Typography 
+            variant="h6" 
+            noWrap 
+            component="div" 
             sx={{ flexGrow: 1, display: { xs: 'block', md: 'none' } }}
           >
             BugTracker
           </Typography>
-          
+
           <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'block' } }} />
-          
-          <Button color="inherit" onClick={logout}>
+
+          <Button onClick={logout}>
             Выйти
           </Button>
         </Toolbar>
@@ -89,9 +84,8 @@ const Layout = ({ children }) => {
             display: { xs: 'block', md: 'none' },
           }}
         >
-          <SidebarContent />
+          {drawer}
         </Drawer>
-        
         <Drawer
           variant="permanent"
           sx={{
@@ -100,10 +94,9 @@ const Layout = ({ children }) => {
           }}
           open
         >
-          <SidebarContent />
+          {drawer}
         </Drawer>
       </Box>
-
       <Box
         component="main"
         sx={{
