@@ -11,6 +11,7 @@ import {
 import BugReportIcon from '@mui/icons-material/BugReport';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '@mui/material/styles';
 
 const fadeIn = keyframes`
   from {
@@ -22,11 +23,12 @@ const fadeIn = keyframes`
     transform: translateY(0);
   }
 `;
-
+ 
 const LandingPage = () => {
   const { isAuthenticated, login } = useAuth();
   const navigate = useNavigate();
-
+  const theme = useTheme();
+  
   const handleStart = () => {
     if (isAuthenticated) {
       navigate('/dashboard');
@@ -34,10 +36,10 @@ const LandingPage = () => {
       login();
     }
   };
-
+ 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', overflow: 'hidden' }}>
-      <AppBar position="static" color="transparent" elevation={0}>
+    <Box sx={{ position: 'relative', minHeight: '100vh' }}>
+      <AppBar position="absolute" color="transparent" elevation={0} sx={{ zIndex: 1 }}>
         <Toolbar>
           <BugReportIcon sx={{ mr: 1, color: 'primary.main' }} />
           <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
@@ -50,11 +52,11 @@ const LandingPage = () => {
           )}
         </Toolbar>
       </AppBar>
-
+ 
       <Container
         component="main"
         sx={{
-          flexGrow: 1,
+          minHeight: '100vh',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -71,14 +73,12 @@ const LandingPage = () => {
             fontWeight: 'bold',
             fontSize: { xs: '2.5rem', sm: '3.75rem' },
             animation: `${fadeIn} 1s ease-out`,
-            background: 'linear-gradient(90deg, #90caf9, #f48fb1)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            color: 'text.primary',
           }}
         >
-          Систематизируйте хаос. Исправляйте баги.
+          Эффективное отслеживание задач
         </Typography>
-
+ 
         <Typography
           variant="h5"
           color="text.secondary"
@@ -91,10 +91,9 @@ const LandingPage = () => {
             animationFillMode: 'backwards',
           }}
         >
-          Наш BugTracker — это простое и мощное решение для отслеживания ошибок,
-          управления задачами и совместной работы вашей команды.
+          Инструмент для регистрации, отслеживания и управления задачами в рамках проектной работы.
         </Typography>
-
+ 
         <Button
           variant="contained"
           size="large"
@@ -112,5 +111,5 @@ const LandingPage = () => {
     </Box>
   );
 };
-
+ 
 export default LandingPage;

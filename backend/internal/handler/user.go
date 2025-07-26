@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/pesos228/bug-tracker/internal/appmw"
 	"github.com/pesos228/bug-tracker/internal/handler/dto"
 	"github.com/pesos228/bug-tracker/internal/service"
+	"github.com/pesos228/bug-tracker/internal/store"
 )
 
 type UserHandler struct {
@@ -63,6 +65,26 @@ func (u *UserHandler) AboutUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	encodeJSON(w, response)
+}
+
+func (u *UserHandler) Stats(w http.ResponseWriter, r *http.Request) {
+	userID, ok := appmw.UserIdFromContext(r.Context())
+	if !ok || userID == "" {
+		http.Error(w, "UserID not found in context", http.StatusInternalServerError)
+		return
+	}
+
+	stats, err := u.userService.GetStats(r.Context(), userID)
+	if err != nil {
+		if errors.Is(err, store.ErrUserNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	encodeJSON(w, stats)
 }
 
 func NewUserHandler(userService service.UserService) *UserHandler {

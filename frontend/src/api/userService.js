@@ -14,3 +14,8 @@ export const searchUsers = async (page = 1, pageSize = 10, fullName = '') => {
   const response = await apiClient.get(`/users?${params.toString()}`);
   return response.data;
 };
+
+export const getUserStats = async () => {
+  const response = await apiClient.get('/users/me/stats');
+  return response.data;
+};

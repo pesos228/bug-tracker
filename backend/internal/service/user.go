@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -18,6 +19,7 @@ type SearchUsersParams struct {
 
 type UserService interface {
 	Search(ctx context.Context, params *SearchUsersParams) (*dto.UserListResponse, error)
+	GetStats(ctx context.Context, userID string) (*dto.UserStatsResponse, error)
 }
 
 type userServiceImpl struct {
@@ -36,6 +38,26 @@ var (
 		domain.PartiallyChecked,
 	}
 )
+
+func (u *userServiceImpl) GetStats(ctx context.Context, userID string) (*dto.UserStatsResponse, error) {
+	_, err := u.userStore.FindById(ctx, userID)
+	if err != nil {
+		if errors.Is(err, store.ErrUserNotFound) {
+			return nil, fmt.Errorf("%w: with ID: %s", err, userID)
+		}
+		return nil, fmt.Errorf("db error: %w", err)
+	}
+
+	taskCounts, err := u.taskStore.GetTaskCountsForUsers(ctx, []string{userID}, inProgressCheckStatuses, completedCheckStatuses)
+	if err != nil {
+		return nil, fmt.Errorf("error while getting task counts: %w", err)
+	}
+
+	return &dto.UserStatsResponse{
+		InProgressTasksCount: taskCounts[0].InProgressTasksCount,
+		CompletedTasksCount:  taskCounts[0].CompletedTasksCount,
+	}, nil
+}
 
 func (u *userServiceImpl) Search(ctx context.Context, params *SearchUsersParams) (*dto.UserListResponse, error) {
 	users, count, err := u.userStore.Search(ctx, &store.SearchUsersQuery{

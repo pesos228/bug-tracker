@@ -88,6 +88,7 @@ func main() {
 		r.Use(authMiddleware)
 
 		r.Get("/api/users/me", userHandler.AboutUser)
+		r.Get("/api/users/me/stats", userHandler.Stats)
 		r.Get("/api/tasks/my", taskHandler.ListUserTasks)
 		r.Get("/api/tasks/{id}", taskHandler.Details)
 		r.Patch("/api/tasks/{id}/review", taskHandler.UpdateByUser)

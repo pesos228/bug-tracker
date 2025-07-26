@@ -17,3 +17,8 @@ type UserInfoResponse struct {
 	LastName  string
 	IsAdmin   bool
 }
+
+type UserStatsResponse struct {
+	InProgressTasksCount int `json:"inProgressTasksCount"`
+	CompletedTasksCount  int `json:"completedTasksCount"`
+}

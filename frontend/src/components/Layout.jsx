@@ -22,7 +22,8 @@ const Layout = ({ children }) => {
       boxSizing: 'border-box',
       width: drawerWidth,
       backgroundColor: 'background.default', 
-      borderRight: '1px solid rgba(255, 255, 255, 0.12)',
+      borderRight: '1px solid',
+      borderColor: 'divider',
     },
   };
 
@@ -43,7 +44,6 @@ const Layout = ({ children }) => {
       >
         <Toolbar>
           <IconButton
-            color="inherit"
             aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
@@ -56,6 +56,7 @@ const Layout = ({ children }) => {
             variant="h6" 
             noWrap 
             component="div" 
+            color="text.primary"
             sx={{ flexGrow: 1, display: { xs: 'block', md: 'none' } }}
           >
             BugTracker
