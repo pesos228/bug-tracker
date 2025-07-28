@@ -20,8 +20,17 @@ type AuthConfig struct {
 	SSOMaxLifespanSeconds int
 }
 
+type SmtpConfig struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+	From     string
+}
+
 type Config struct {
 	Auth         AuthConfig
+	Smtp         SmtpConfig
 	RedisConfig  redis.Options
 	AppPort      string
 	AppPublicUrl string
@@ -44,6 +53,11 @@ func LoadFromEnv() *Config {
 		log.Fatalf("KEYCLOAK_SSO_MAX_LIFESPAN_SECONDS must be an integer, got: %v", os.Getenv("KEYCLOAK_SSO_MAX_LIFESPAN_SECONDS"))
 	}
 
+	smtpPort, err := strconv.Atoi(requireEnv("SMTP_PORT"))
+	if err != nil {
+		log.Fatalf("SMTP_PORT must be an integer, got: %v", os.Getenv("SMTP_PORT"))
+	}
+
 	return &Config{
 		Auth: AuthConfig{
 			PublicBaseUrl:         requireEnv("KEYCLOAK_PUBLIC_BASE_URL"),
@@ -59,6 +73,13 @@ func LoadFromEnv() *Config {
 			Username: requireEnv("REDIS_USERNAME"),
 			Password: requireEnv("REDIS_PASSWORD"),
 			DB:       RedisDb,
+		},
+		Smtp: SmtpConfig{
+			Host:     requireEnv("SMTP_HOST"),
+			Port:     smtpPort,
+			Username: requireEnv("SMTP_USERNAME"),
+			Password: requireEnv("SMTP_PASSWORD"),
+			From:     requireEnv("SMTP_FROM"),
 		},
 		AppPort:      requireEnv("APP_PORT"),
 		DatabaseUrl:  requireEnv("POSTGRES_URL"),

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Новая задача</title>
+</head>
+<body style="font-family: sans-serif;">
+    <h2>Здравствуйте, {{.FirstName}}!</h2>
+    <p>Вам назначена новая задача по: <strong>{{.SoftName}}</strong>.</p>
+    <p>
+        <a href="{{.TaskURL}}" style="background-color: #007bff; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">
+            Открыть задачу
+        </a>
+    </p>
+    <hr>
+    <p style="font-size:12px; color:#888;">
+        Письмо сгенерировано системой. Отвечать не нужно.
+    </p>
+</body>
+</html>

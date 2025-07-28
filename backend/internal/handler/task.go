@@ -120,6 +120,12 @@ func (t *TaskHandler) UpdateByAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userID, ok := appmw.UserIdFromContext(r.Context())
+	if !ok || userID == "" {
+		http.Error(w, "UserID not found in context", http.StatusInternalServerError)
+		return
+	}
+
 	var taskUpdate dto.TaskUpdateByAdminRequest
 	if ok := decodeJSON(w, r, &taskUpdate); !ok {
 		return
@@ -137,6 +143,7 @@ func (t *TaskHandler) UpdateByAdmin(w http.ResponseWriter, r *http.Request) {
 		CheckResult:       taskUpdate.CheckResult,
 		Comment:           taskUpdate.Comment,
 		TaskID:            taskID,
+		CurrentUserID:     userID,
 	}); err != nil {
 		if errors.Is(err, domain.ErrValidation) {
 			http.Error(w, err.Error(), http.StatusBadRequest)

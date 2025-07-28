@@ -12,6 +12,7 @@ import (
 	"github.com/pesos228/bug-tracker/internal/domain"
 	"github.com/pesos228/bug-tracker/internal/excel"
 	"github.com/pesos228/bug-tracker/internal/handler"
+	"github.com/pesos228/bug-tracker/internal/notification"
 	"github.com/pesos228/bug-tracker/internal/service"
 	"github.com/pesos228/bug-tracker/internal/store/psqlstore"
 	"github.com/pesos228/bug-tracker/internal/store/redisstore"
@@ -48,6 +49,7 @@ func main() {
 	sessionTTL := time.Duration(cfg.Auth.SSOMaxLifespanSeconds) * time.Second
 
 	reportGenerator := excel.NewReportGenerator()
+	emailNotifier := notification.NewEmailNotifier(cfg.Smtp.Host, cfg.Smtp.Port, cfg.Smtp.Username, cfg.Smtp.Password, cfg.Smtp.From, cfg.AppPublicUrl)
 
 	stateStore := redisstore.NewRedisStateStore(redisClient)
 	sessionStore := redisstore.NewRedisSessionStore(redisClient, sessionTTL)
@@ -64,7 +66,7 @@ func main() {
 		AppPublicUrl: cfg.AppPublicUrl,
 	})
 	folderService := service.NewFolderService(folderStore)
-	taskService := service.NewTaskService(taskStore, userStore, folderStore)
+	taskService := service.NewTaskService(taskStore, userStore, folderStore, emailNotifier)
 	userService := service.NewUserService(userStore, taskStore)
 	reportService := service.NewReportService(folderStore, taskStore, reportGenerator)
 

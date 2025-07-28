@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/pesos228/bug-tracker/internal/domain"
 	"github.com/pesos228/bug-tracker/internal/handler/dto"
+	"github.com/pesos228/bug-tracker/internal/notification"
 	"github.com/pesos228/bug-tracker/internal/store"
 )
 
@@ -80,9 +82,10 @@ type TaskService interface {
 var ErrNotAssignee = errors.New("user is not the assignee")
 
 type taskServiceImpl struct {
-	taskStore   store.TaskStore
-	userStore   store.UserStore
-	folderStore store.FolderStore
+	taskStore     store.TaskStore
+	userStore     store.UserStore
+	folderStore   store.FolderStore
+	emailNotifier notification.Notifier
 }
 
 func (t *taskServiceImpl) SearchByUserID(ctx context.Context, params *SearchTasksByUserIDParams) (*dto.TaskPreviewResponse, error) {
@@ -182,6 +185,9 @@ func (t *taskServiceImpl) UpdateByAdmin(ctx context.Context, params *UpdateTaskP
 		if err := t.isUserExists(ctx, *params.AssigneeID); err != nil {
 			return err
 		}
+		if *params.AssigneeID != params.CurrentUserID {
+			go t.notifyAboutTask(context.Background(), *params.AssigneeID, params.TaskID)
+		}
 	}
 
 	if params.FolderID != nil {
@@ -277,6 +283,8 @@ func (t *taskServiceImpl) Save(ctx context.Context, params *CreateTaskParams) er
 		return fmt.Errorf("db error while saving: %s", err.Error())
 	}
 
+	go t.notifyAboutTask(context.Background(), params.AssigneeID, newTask.ID)
+
 	return nil
 }
 
@@ -317,6 +325,21 @@ func mapTaskToTaskPreview(tasks []*domain.Task) []*dto.TaskPreview {
 	return data
 }
 
-func NewTaskService(taskStore store.TaskStore, userStore store.UserStore, folderStore store.FolderStore) TaskService {
-	return &taskServiceImpl{taskStore: taskStore, userStore: userStore, folderStore: folderStore}
+func (t *taskServiceImpl) notifyAboutTask(ctx context.Context, userID, taskID string) {
+	user, err := t.userStore.FindById(ctx, userID)
+	if err != nil {
+		log.Printf("NOTIFY_TASK_ERROR: failed to find user in db: %v", err)
+		return
+	}
+	task, err := t.taskStore.FindById(ctx, taskID)
+	if err != nil {
+		log.Printf("NOTIFY_TASK_ERROR: failed to find task in db: %v", err)
+		return
+	}
+
+	t.emailNotifier.NotifyAboutNewTask(user, task)
+}
+
+func NewTaskService(taskStore store.TaskStore, userStore store.UserStore, folderStore store.FolderStore, emailNotifier notification.Notifier) TaskService {
+	return &taskServiceImpl{taskStore: taskStore, userStore: userStore, folderStore: folderStore, emailNotifier: emailNotifier}
 }
