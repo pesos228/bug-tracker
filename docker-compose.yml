@@ -8,14 +8,13 @@ services:
       - "443:443"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
-      - caddy-data:/data
+      - ./caddy/data:/data
+      - ./caddy/config:/config
     restart: unless-stopped
   
   redis:
     container_name: redis
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     restart: on-failure
     volumes:
       - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
@@ -27,8 +26,6 @@ services:
   postgres:
     container_name: postgres
     image: postgres:17-alpine
-    ports:
-      - "5432:5432"
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -46,18 +43,19 @@ services:
     environment:
       - KC_BOOTSTRAP_ADMIN_USERNAME=${KC_ADMIN_USERNAME}
       - KC_BOOTSTRAP_ADMIN_PASSWORD=${KC_ADMIN_PASSWORD}
-      - KC_DB=postgres
-      - KC_DB_URL_HOST=postgres
-      - KC_DB_URL_DATABASE=keycloak
+      - KC_DB=${KC_DB}
+      - KC_DB_URL_HOST=${KC_DB_URL_HOST}
+      - KC_DB_URL_DATABASE=${KC_DB_URL_DATABASE}
       - KC_DB_USERNAME=${POSTGRES_USER}
       - KC_DB_PASSWORD=${POSTGRES_PASSWORD}
-      - KC_DB_SCHEMA=public
+      - KC_DB_SCHEMA=${KC_DB_SCHEMA}
+      - KC_HOSTNAME=${KC_HOSTNAME}
+      - KC_HOSTNAME_ADMIN=${KC_HOSTNAME_ADMIN}
+      - KC_HTTP_ENABLED=${KC_HTTP_ENABLED}
+      - KC_PROXY_HEADERS=${KC_PROXY_HEADERS}
     command:
-      - start-dev
-      - --hostname=https://keycloak.local
+      - start
       - --import-realm
-      - --proxy-headers=xforwarded
-      - --http-enabled=true
     restart: unless-stopped
     depends_on:
       - postgres
@@ -66,8 +64,6 @@ services:
     container_name: backend
     build: ./backend
     restart: unless-stopped
-    ports:
-      - "8081:8081"
     env_file:
       - .env
     depends_on:
@@ -77,21 +73,21 @@ services:
   
   frontend:
     container_name: frontend
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        - VITE_KEYCLOAK_ACCOUNT_URL=${VITE_KEYCLOAK_ACCOUNT_URL}
     restart: unless-stopped
-    ports:
-      - "5173:5173"
     env_file:
       - .env
     volumes:
-      - ./frontend:/app
       - frontend-node-modules:/app/node_modules
     depends_on:
       - backend
 
 volumes:
   redis-data:
-  caddy-data:
   keycloak-data:
   postgres-data:
   frontend-node-modules:

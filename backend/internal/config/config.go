@@ -43,19 +43,17 @@ func LoadFromEnv() *Config {
 		log.Println("Failed to load .env file, system variables are used")
 	}
 
-	RedisDb, err := strconv.Atoi(requireEnv("REDIS_DB"))
-	if err != nil {
-		log.Fatalf("REDIS_DB must be an integer, got: %v", os.Getenv("REDIS_DB"))
-	}
-
-	ssoLifespanSeconds, err := strconv.Atoi(requireEnv("KEYCLOAK_SSO_MAX_LIFESPAN_SECONDS"))
-	if err != nil {
-		log.Fatalf("KEYCLOAK_SSO_MAX_LIFESPAN_SECONDS must be an integer, got: %v", os.Getenv("KEYCLOAK_SSO_MAX_LIFESPAN_SECONDS"))
-	}
-
-	smtpPort, err := strconv.Atoi(requireEnv("SMTP_PORT"))
-	if err != nil {
-		log.Fatalf("SMTP_PORT must be an integer, got: %v", os.Getenv("SMTP_PORT"))
+	var smtpCfg SmtpConfig
+	if getBoolEnv("SMTP_ENABLED") {
+		smtpCfg = SmtpConfig{
+			Host:     requireEnv("SMTP_HOST"),
+			Port:     getIntEnv("SMTP_PORT"),
+			Username: requireEnv("SMTP_USERNAME"),
+			Password: requireEnv("SMTP_PASSWORD"),
+			From:     requireEnv("SMTP_FROM"),
+		}
+	} else {
+		log.Println("SMTP is disabled, email notifications will not be sent")
 	}
 
 	return &Config{
@@ -66,21 +64,15 @@ func LoadFromEnv() *Config {
 			RedirectUrl:           requireEnv("KEYCLOAK_REDIRECT_URL"),
 			ClientSecret:          requireEnv("KEYCLOAK_CLIENT_SECRET"),
 			Realm:                 requireEnv("KEYCLOAK_REALM"),
-			SSOMaxLifespanSeconds: ssoLifespanSeconds,
+			SSOMaxLifespanSeconds: getIntEnv("KEYCLOAK_SSO_MAX_LIFESPAN_SECONDS"),
 		},
 		RedisConfig: redis.Options{
 			Addr:     fmt.Sprintf("%s:%s", requireEnv("REDIS_HOST"), requireEnv("REDIS_PORT")),
 			Username: requireEnv("REDIS_USERNAME"),
 			Password: requireEnv("REDIS_PASSWORD"),
-			DB:       RedisDb,
+			DB:       getIntEnv("REDIS_DB"),
 		},
-		Smtp: SmtpConfig{
-			Host:     requireEnv("SMTP_HOST"),
-			Port:     smtpPort,
-			Username: requireEnv("SMTP_USERNAME"),
-			Password: requireEnv("SMTP_PASSWORD"),
-			From:     requireEnv("SMTP_FROM"),
-		},
+		Smtp:         smtpCfg,
 		AppPort:      requireEnv("APP_PORT"),
 		DatabaseUrl:  requireEnv("POSTGRES_URL"),
 		AppPublicUrl: requireEnv("APP_PUBLIC_URL"),
@@ -93,4 +85,24 @@ func requireEnv(key string) string {
 		log.Fatalf("Environment variable %s is required but not set", key)
 	}
 	return value
+}
+
+func getIntEnv(key string) int {
+	value, err := strconv.Atoi(os.Getenv(key))
+	if err != nil {
+		log.Fatalf("%s must be an integer, got: %v", key, os.Getenv(key))
+	}
+	return value
+}
+
+func getBoolEnv(key string) bool {
+	value := os.Getenv(key)
+	if value == "" {
+		return false
+	}
+	boolValue, err := strconv.ParseBool(value)
+	if err != nil {
+		log.Fatalf("%s must be a boolean, got: %v", key, value)
+	}
+	return boolValue
 }

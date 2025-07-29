@@ -1,0 +1,33 @@
+services:
+  redis:
+    ports:
+      - "6379:6379"
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  keycloak:
+    ports:
+      - "8080:8080"
+    command:
+      - start-dev
+      - --hostname=https://keycloak.local
+      - --import-realm
+      - --proxy-headers=xforwarded
+      - --http-enabled=true
+
+  backend:
+    ports:
+      - "8081:8081"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
