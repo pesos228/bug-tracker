@@ -815,10 +815,10 @@
       "clientAuthenticatorType": "client-secret",
       "secret": "**********",
       "redirectUris": [
-        "${env.APP_PUBLIC_URL}/auth/callback"
+        "${APP_PUBLIC_URL}/auth/callback"
       ],
       "webOrigins": [
-        "/*"
+        "${APP_PUBLIC_URL}"
       ],
       "notBefore": 0,
       "bearerOnly": false,
@@ -837,7 +837,7 @@
         "backchannel.logout.session.required": "true",
         "standard.token.exchange.enabled": "false",
         "frontchannel.logout.session.required": "true",
-        "post.logout.redirect.uris": "${env.APP_PUBLIC_URL}/",
+        "post.logout.redirect.uris": "${APP_PUBLIC_URL}/",
         "display.on.consent.screen": "false",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false"

@@ -58,7 +58,7 @@ Caddy автоматически сгенерирует HTTPS-сертифика
     `caddy/data/pki/authorities/local/root.crt`
 3.  **Установите этот `root.crt` файл** в хранилище **"Доверенные корневые центры сертификации"** вашей операционной системы.
     *   **Windows:** Дважды кликните по файлу, выберите "Установить сертификат" -> "Локальный компьютер" -> "Поместить все сертификаты в следующее хранилище" -> "Обзор" -> "Доверенные корневые центры сертификации".
-    *   **Linux (Ubuntu):** `sudo cp caddy/data/pki/authorities/local/root.crt /usr/local/share/ca-certificates/` и затем `sudo update-ca-certificates`.
+    *   **Linux (Ubuntu):** `sudo cp ./caddy/data/caddy/pki/authorities/local/root.crt /usr/local/share/ca-certificates/` и затем `sudo update-ca-certificates`.
     *   **macOS:** `sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain caddy/data/pki/authorities/local/root.crt`.
 4.  **Важно:** После установки сертификата **полностью перезапустите ваш браузер**.
 

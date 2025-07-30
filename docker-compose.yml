@@ -36,9 +36,8 @@ services:
   
   keycloak:
     container_name: keycloak
-    image: quay.io/keycloak/keycloak:26.3.0
+    build: ./keycloak
     volumes:
-      - ./keycloak:/opt/keycloak/data/import 
       - keycloak-data:/opt/keycloak/data
     environment:
       - KC_BOOTSTRAP_ADMIN_USERNAME=${KC_ADMIN_USERNAME}
@@ -53,12 +52,14 @@ services:
       - KC_HOSTNAME_ADMIN=${KC_HOSTNAME_ADMIN}
       - KC_HTTP_ENABLED=${KC_HTTP_ENABLED}
       - KC_PROXY_HEADERS=${KC_PROXY_HEADERS}
+      - APP_PUBLIC_URL=${APP_PUBLIC_URL}
     command:
       - start
       - --import-realm
     restart: unless-stopped
     depends_on:
-      - postgres
+      postgres:
+        condition: service_started
 
   backend:
     container_name: backend
