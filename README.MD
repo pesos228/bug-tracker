@@ -41,7 +41,7 @@
 Для корректной работы аутентификации через Keycloak необходимо, чтобы домены `myapp.local` и `keycloak.local` вели на ваш компьютер.
 
 Откройте файл `hosts` с правами администратора:
-*   **Windows:** `C:\Windows\System2\drivers\etc\hosts`
+*   **Windows:** `C:\Windows\System32\drivers\etc\hosts`
 *   **Linux/macOS:** `/etc/hosts`
 
 И добавьте в конец файла следующую строку:

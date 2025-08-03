@@ -14,9 +14,10 @@ import { useSnackbar } from 'notistack';
 import { useDebounce } from '../hooks/useDebounce';
 import { getTasksByFolderId } from '../api/taskService';
 import { getFolderDetails, deleteFolder, exportFolder } from '../api/folderService';
-import { getStatusName, statusNameMapping } from '../utils/statusUtils';
+import { getStatusName, statusNameMapping, getStatusChipColor } from '../utils/statusUtils';
 import ConfirmDialog from '../components/ConfirmDialog';
 import dayjs from 'dayjs';
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 const truncateText = (text, maxLength) => {
   if (text.length <= maxLength) {
@@ -143,112 +144,119 @@ const FolderTasksPage = () => {
   }
   
   return (
-    <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-        <Box>
-          <Typography variant="h4" component="h1">{folderDetails?.name}</Typography>
-          {folderDetails && (<Typography variant="caption" color="text.secondary">Создана: {dayjs(folderDetails.createdAt).format('DD.MM.YYYY')} | Ответственный: {folderDetails.assigneePerson}</Typography>)}
-        </Box>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => navigate(`/folders/${folderId}/tasks/create`)}
-            size={isMobile ? 'small' : 'medium'}
-          >
-            {!isMobile && 'Создать задачу'}
-          </Button>
-          <Tooltip title="Экспорт в Excel">
-            {isMobile ? (
-              <IconButton onClick={handleExport} size="small">
-                <FileDownloadIcon />
-              </IconButton>
-            ) : (
-              <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={handleExport}>
-                Экспорт
-              </Button>
-            )}
-          </Tooltip>
-          <Tooltip title="Удалить папку">
-            {isMobile ? (
-              <IconButton onClick={() => setConfirmOpen(true)} size="small" color="error">
-                <DeleteIcon />
-              </IconButton>
-            ) : (
-              <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => setConfirmOpen(true)}>
-                Удалить папку
-              </Button>
-            )}
-          </Tooltip>
-        </Stack>
-      </Box>
-  
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 2 }}>
-        <TextField fullWidth variant="outlined" placeholder="Поиск по номеру заявки..." value={searchQuery} onChange={handleSearchChange} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }} />
-        <FormControl fullWidth>
-          <InputLabel>Статус</InputLabel>
-          <Select value={statusFilter} label="Статус" onChange={handleStatusChange}>
-            <MenuItem value=""><em>Все статусы</em></MenuItem>
-            {Object.entries(statusNameMapping).map(([key, name]) => (<MenuItem key={key} value={key}>{name}</MenuItem>))}
-          </Select>
-        </FormControl>
-      </Stack>
-  
-      <Box sx={{ position: 'relative' }}>
-        {isTableLoading && <LinearProgress sx={{ position: 'absolute', top: 0, left: 0, width: '100%' }} />}
-        <Box sx={{ opacity: isTableLoading ? 0.6 : 1, transition: 'opacity 0.3s' }}>
-          {error && !isTableLoading && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-          <TableContainer>
-            {!isMobile ? (
-              <Table stickyHeader>
-                <TableHead><TableRow><TableCell sx={{ width: '20%' }}>ПО</TableCell><TableCell sx={{ width: '15%' }}>Номер заявки</TableCell><TableCell>Описание</TableCell><TableCell sx={{ width: '15%' }}>Дата создания</TableCell></TableRow></TableHead>
-                <TableBody>
-                  {tasks.map((task) => (
-                    <TableRow hover key={task.id} onClick={() => handleRowClick(task.id)} sx={{ cursor: 'pointer' }}>
-                      <TableCell><Stack direction="row" alignItems="center" spacing={1}><Chip label={getStatusName(task.checkStatus)} size="small" variant="outlined" /><Typography variant="body2">{task.softName}</Typography></Stack></TableCell>
-                      <TableCell>{task.requestId}</TableCell>
-                      <TableCell>{truncateText(task.description, 100)}</TableCell>
-                      <TableCell>{dayjs(task.createdAt).format('DD.MM.YYYY')}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <Box>
-                {tasks.map((task) => (
-                  <Paper key={task.id} sx={{ p: 2, mb: 2, cursor: 'pointer' }} onClick={() => handleRowClick(task.id)}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}><Typography variant="h6">{task.softName}</Typography><Chip label={getStatusName(task.checkStatus)} size="small" variant="outlined" /></Stack>
-                    <Typography variant="body2" color="text.secondary">Заявка: {task.requestId}</Typography>
-                    <Typography variant="body1" noWrap sx={{ my: 1 }}>{truncateText(task.description, 50)}</Typography>
-                    <Typography variant="caption" color="text.secondary">{dayjs(task.createdAt).format('DD.MM.YYYY')}</Typography>
-                  </Paper>
-                ))}
-              </Box>
-            )}
-          </TableContainer>
-  
-          <TablePagination
-            rowsPerPageOptions={isMobile ? [] : [5, 10, 25]}
-            component="div"
-            count={totalCount}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            labelRowsPerPage={isMobile ? '' : 'Строк на странице:'}
-            labelDisplayedRows={({ from, to, count }) => `${from}-${to} из ${count}`}
-          />
-        </Box>
-      </Box>
-  
-      <ConfirmDialog
-        open={isConfirmOpen}
-        title="Удалить папку?"
-        content={`Вы уверены, что хотите удалить папку "${folderDetails?.name}"? Это действие необратимо.`}
-        onConfirm={handleDelete}
-        onCancel={() => setConfirmOpen(false)}
+    <Box>
+      <PageBreadcrumbs 
+        items={[{ label: 'Папки', to: '/folders' }]}
+        currentPage={folderDetails?.name || 'Задачи'}
       />
-    </Paper>
+      <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+          <Box>
+            <Typography variant="h4" component="h1">{folderDetails?.name}</Typography>
+            {folderDetails && (<Typography variant="caption" color="text.secondary">Создана: {dayjs(folderDetails.createdAt).format('DD.MM.YYYY')} | Ответственный: {folderDetails.assigneePerson}</Typography>)}
+          </Box>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => navigate(`/folders/${folderId}/tasks/create`)}
+              size={isMobile ? 'small' : 'medium'}
+            >
+              {!isMobile && 'Создать задачу'}
+            </Button>
+            <Tooltip title="Экспорт в Excel">
+              {isMobile ? (
+                <IconButton onClick={handleExport} size="small">
+                  <FileDownloadIcon />
+                </IconButton>
+              ) : (
+                <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={handleExport}>
+                  Экспорт
+                </Button>
+              )}
+            </Tooltip>
+            <Tooltip title="Удалить папку">
+              {isMobile ? (
+                <IconButton onClick={() => setConfirmOpen(true)} size="small" color="error">
+                  <DeleteIcon />
+                </IconButton>
+              ) : (
+                <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => setConfirmOpen(true)}>
+                  Удалить папку
+                </Button>
+              )}
+            </Tooltip>
+          </Stack>
+        </Box>
+    
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 2 }}>
+          <TextField fullWidth variant="outlined" placeholder="Поиск по номеру заявки..." value={searchQuery} onChange={handleSearchChange} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }} />
+          <FormControl fullWidth>
+            <InputLabel>Статус</InputLabel>
+            <Select value={statusFilter} label="Статус" onChange={handleStatusChange}>
+              <MenuItem value=""><em>Все статусы</em></MenuItem>
+              {Object.entries(statusNameMapping).map(([key, name]) => (<MenuItem key={key} value={key}>{name}</MenuItem>))}
+            </Select>
+          </FormControl>
+        </Stack>
+    
+        <Box sx={{ position: 'relative' }}>
+          {isTableLoading && <LinearProgress sx={{ position: 'absolute', top: 0, left: 0, width: '100%' }} />}
+          <Box sx={{ opacity: isTableLoading ? 0.6 : 1, transition: 'opacity 0.3s' }}>
+            {error && !isTableLoading && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+            <TableContainer>
+              {!isMobile ? (
+                <Table stickyHeader>
+                  <TableHead><TableRow><TableCell sx={{ width: '20%' }}>ПО</TableCell><TableCell sx={{ width: '15%' }}>Номер заявки</TableCell><TableCell>Описание</TableCell><TableCell sx={{ width: '15%' }}>Дата создания</TableCell></TableRow></TableHead>
+                  <TableBody>
+                    {tasks.map((task) => (
+                      <TableRow hover key={task.id} onClick={() => handleRowClick(task.id)} sx={{ cursor: 'pointer' }}>
+                        <TableCell><Stack direction="row" alignItems="center" spacing={1}><Chip label={getStatusName(task.checkStatus)} size="small" variant="outlined" color={getStatusChipColor(task.checkStatus)}/><Typography variant="body2">{task.softName}</Typography></Stack></TableCell>
+                        <TableCell>{task.requestId}</TableCell>
+                        <TableCell>{truncateText(task.description, 100)}</TableCell>
+                        <TableCell>{dayjs(task.createdAt).format('DD.MM.YYYY')}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <Box>
+                  {tasks.map((task) => (
+                    <Paper key={task.id} sx={{ p: 2, mb: 2, cursor: 'pointer' }} onClick={() => handleRowClick(task.id)}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}><Typography variant="h6">{task.softName}</Typography>
+                      <Chip label={getStatusName(task.checkStatus)} size="small" variant="outlined" color={getStatusChipColor(task.checkStatus)}/></Stack>
+                      <Typography variant="body2" color="text.secondary">Заявка: {task.requestId}</Typography>
+                      <Typography variant="body1" noWrap sx={{ my: 1 }}>{truncateText(task.description, 50)}</Typography>
+                      <Typography variant="caption" color="text.secondary">{dayjs(task.createdAt).format('DD.MM.YYYY')}</Typography>
+                    </Paper>
+                  ))}
+                </Box>
+              )}
+            </TableContainer>
+    
+            <TablePagination
+              rowsPerPageOptions={isMobile ? [] : [5, 10, 25]}
+              component="div"
+              count={totalCount}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              labelRowsPerPage={isMobile ? '' : 'Строк на странице:'}
+              labelDisplayedRows={({ from, to, count }) => `${from}-${to} из ${count}`}
+            />
+          </Box>
+        </Box>
+    
+        <ConfirmDialog
+          open={isConfirmOpen}
+          title="Удалить папку?"
+          content={`Вы уверены, что хотите удалить папку "${folderDetails?.name}"? Это действие необратимо.`}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      </Paper>
+    </Box>
   );
 };
   

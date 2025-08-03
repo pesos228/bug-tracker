@@ -7,6 +7,7 @@ import { useSnackbar } from 'notistack';
 import { createTask } from '../api/taskService';
 import UserSelectionDialog from '../components/selectors/UserSelectionDialog';
 import SelectionInput from '../components/selectors/SelectionInput';
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 const CreateTaskPage = () => {
   const { folderId } = useParams();
@@ -62,7 +63,11 @@ const CreateTaskPage = () => {
   };
 
   return (
-    <>
+    <Box sx={{ maxWidth: '800px', mx: 'auto' }}>
+      <PageBreadcrumbs 
+        items={[{ label: 'Задачи папки', to: `/folders/${folderId}/tasks` }]}
+        currentPage="Новая задача"
+      />
       <Paper sx={{ p: 3, maxWidth: '800px', mx: 'auto' }}>
         <Typography variant="h4" gutterBottom>
           Новая задача
@@ -128,7 +133,7 @@ const CreateTaskPage = () => {
         onSelect={handleUserSelect}
         currentValue={formData.assigneeId}
       />
-    </>
+    </Box>
   );
 };
 

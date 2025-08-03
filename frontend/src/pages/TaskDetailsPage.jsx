@@ -16,6 +16,7 @@ import SelectionInput from '../components/selectors/SelectionInput';
 import { searchUsers } from '../api/userService';
 import { searchFolders } from '../api/folderService';
 import ConfirmDialog from '../components/ConfirmDialog';
+import PageBreadcrumbs from '../components/PageBreadcrumbs';
 
 const resultNameMapping = { success: 'Успешно', failure: 'Неуспешно', warning: 'Есть замечания' };
 
@@ -235,7 +236,11 @@ const TaskDetailsPage = () => {
   );
   
   return (
-    <>
+    <Box>
+      <PageBreadcrumbs 
+        items={[{ label: 'Задачи', to: -1 }]}
+        currentPage={formData.requestID || 'Детали'}
+      />
       <Paper sx={{ p: 3 }}>
         <Typography variant="h4" gutterBottom>
           {isAdminView ? 'Редактирование задачи' : 'Детали задачи'}
@@ -251,7 +256,7 @@ const TaskDetailsPage = () => {
         title="Удалить задачу?"
         content="Вы уверены, что хотите удалить эту задачу? Это действие необратимо."
       />
-    </>
+    </Box>
   );
 };
 

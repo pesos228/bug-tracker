@@ -9,7 +9,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import { useSnackbar } from 'notistack';
 import { useDebounce } from '../hooks/useDebounce';
 import { getMyTasks } from '../api/taskService';
-import { getStatusName, statusNameMapping } from '../utils/statusUtils';
+import { getStatusName, statusNameMapping, getStatusChipColor } from '../utils/statusUtils';
 import dayjs from 'dayjs';
 
 const MyTasksPage = () => {
@@ -112,7 +112,7 @@ const MyTasksPage = () => {
                     <TableRow hover key={task.id} onClick={() => handleRowClick(task.id)} sx={{ cursor: 'pointer' }}>
                       <TableCell>
                         <Stack direction="row" alignItems="center" spacing={1}>
-                          <Chip label={getStatusName(task.checkStatus)} size="small" variant="outlined" />
+                          <Chip label={getStatusName(task.checkStatus)} size="small" variant="outlined" color={getStatusChipColor(task.checkStatus)} />
                           <Typography variant="body2">{task.softName}</Typography>
                         </Stack>
                       </TableCell>
@@ -129,7 +129,7 @@ const MyTasksPage = () => {
                   <Paper key={task.id} sx={{ p: 2, mb: 2, cursor: 'pointer' }} onClick={() => handleRowClick(task.id)}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
                       <Typography variant="h6">{task.softName}</Typography>
-                      <Chip label={getStatusName(task.checkStatus)} size="small" variant="outlined" />
+                      <Chip label={getStatusName(task.checkStatus)} size="small" variant="outlined" color={getStatusChipColor(task.checkStatus)}/>
                     </Stack>
                     <Typography variant="body2" color="text.secondary">Заявка: {task.requestId}</Typography>
                     <Typography variant="body1" noWrap sx={{ my: 1 }}>{task.description}</Typography>
